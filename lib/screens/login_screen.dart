@@ -30,7 +30,7 @@ class _LoginScreenState extends State<LoginScreen> {
     if (res.statusCode == 200) {
       final user = jsonDecode(res.body);
 
-      Navigator.pop(context, user); // 🔥 trả user về Profile
+      Navigator.pop(context, user);
     } else {
       setState(() {
         error = res.body;

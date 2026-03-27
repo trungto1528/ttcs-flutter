@@ -1,4 +1,6 @@
 import 'dart:convert';
+
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:novel_app/screens/chapter_reader_screen.dart';
@@ -26,38 +28,38 @@ class _StoryDetailScreenState extends State<StoryDetailScreen> {
 
   Future<void> fetchStory() async {
     try {
-      final res = await http
-          .get(Uri.parse("$baseUrl/stories/${widget.storyId}"));
+      final res = await http.get(
+        Uri.parse("$baseUrl/stories/${widget.storyId}"),
+      );
 
       setState(() {
         story = jsonDecode(res.body);
         loading = false;
       });
     } catch (e) {
-      print(e);
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Lỗi tải truyện")));
     }
   }
 
   @override
   Widget build(BuildContext context) {
     if (loading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     final chapters = story!["chapters"] as List;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(story!["title"]),
-      ),
+      appBar: AppBar(title: Text(story!["title"])),
       body: ListView(
         children: [
-          Image.network(
-            story!["coverUrl"] ?? "https://placehold.co/800/png",
-            height: 200,
+          CachedNetworkImage(
             fit: BoxFit.cover,
+            imageUrl: story!["coverUrl"] ?? "https://placehold.co/800/png",
           ),
 
           Padding(
@@ -68,7 +70,9 @@ class _StoryDetailScreenState extends State<StoryDetailScreen> {
                 Text(
                   story!["title"],
                   style: const TextStyle(
-                      fontSize: 22, fontWeight: FontWeight.bold),
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 Text("Tác giả: ${story!["author"] ?? "Unknown"}"),
@@ -88,34 +92,35 @@ class _StoryDetailScreenState extends State<StoryDetailScreen> {
             ),
           ),
 
-      ListView.builder(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        itemCount: chapters.length,
-        itemBuilder: (context, i) {
-          final c = chapters[i];
+          ListView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: chapters.length,
+            itemBuilder: (context, i) {
+              final c = chapters[i];
 
-          final prevId = (i > 0) ? chapters[i - 1]["id"] : -1;
-          final nextId =
-          (i < chapters.length - 1) ? chapters[i + 1]["id"] : -1;
+              final prevId = (i > 0) ? chapters[i - 1]["id"] : -1;
+              final nextId = (i < chapters.length - 1)
+                  ? chapters[i + 1]["id"]
+                  : -1;
 
-          return ListTile(
-            title: Text("Chương ${c["chapterNumber"]}: ${c["title"]}"),
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => ChapterReaderScreen(
-                    chapters: chapters,
-                    currentIndex: i,
-                    storyTitle:story!["title"]
-                  ),
-                ),
+              return ListTile(
+                title: Text("Chương ${c["chapterNumber"]}: ${c["title"]}"),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => ChapterReaderScreen(
+                        chapters: chapters,
+                        currentIndex: i,
+                        storyTitle: story!["title"],
+                      ),
+                    ),
+                  );
+                },
               );
             },
-          );
-        },
-      ),
+          ),
         ],
       ),
     );

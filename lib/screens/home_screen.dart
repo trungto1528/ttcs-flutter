@@ -2,9 +2,11 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:novel_app/screens/chapter_reader_screen.dart';
 import 'package:novel_app/screens/search_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:novel_app/screens/chapter_reader_screen.dart';
+
+import '../route_observer.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -13,7 +15,7 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> {
+class _HomePageState extends State<HomePage> with RouteAware {
   String? lastStoryTitle;
   int? lastChapterIndex;
   int? lastChapterNumber;
@@ -28,14 +30,31 @@ class _HomePageState extends State<HomePage> {
     _loadLastRead();
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    routeObserver.subscribe(this, ModalRoute.of(context)!);
+  }
+
+  @override
+  void dispose() {
+    routeObserver.unsubscribe(this);
+    super.dispose();
+  }
+
+  @override
+  void didPopNext() {
+    _loadLastRead();
+  }
+
   Future<void> _loadLastRead() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
       lastStoryTitle = prefs.getString('lastStoryTitle');
       lastChapterIndex = prefs.getInt('lastChapterIndex');
       lastChapterNumber = prefs.getInt('lastChapterNumber');
-      storyList =jsonDecode(prefs.getString('storyList')!);
-
+      storyList = jsonDecode(prefs.getString('storyList')!);
     });
   }
 
@@ -52,8 +71,8 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-       appBar: AppBar(
-        title: const Text("MyNovel"),
+      appBar: AppBar(
+        title: const Text("TTCS"),
         actions: [
           IconButton(
             icon: Icon(Icons.search),
@@ -67,12 +86,11 @@ class _HomePageState extends State<HomePage> {
         ],
       ),
 
-      // 🔥 BODY SWITCH
+      // BODY SWITCH
       body: buildHome(),
     );
   }
 
-  // ================= HOME =================
   Widget buildHome() {
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -80,7 +98,6 @@ class _HomePageState extends State<HomePage> {
         if (lastStoryTitle != null && lastChapterIndex != null) ...[
           Row(
             children: const [
-              Icon(Icons.book),
               SizedBox(width: 8),
               Text(
                 "Đọc tiếp",
@@ -90,22 +107,22 @@ class _HomePageState extends State<HomePage> {
           ),
 
           const SizedBox(height: 12),
-    ListTile(
-      onTap: (){
-        Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => ChapterReaderScreen(
-                  chapters: storyList,
-                  currentIndex: lastChapterIndex!,
-                  storyTitle:lastStoryTitle!
-              ),
-            )
-        );
-      },
-      title: Text(lastStoryTitle!),
-      subtitle: Text("Chương $lastChapterNumber")
-    )
+          ListTile(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => ChapterReaderScreen(
+                    chapters: storyList,
+                    currentIndex: lastChapterIndex!,
+                    storyTitle: lastStoryTitle!,
+                  ),
+                ),
+              );
+            },
+            title: Text(lastStoryTitle!),
+            subtitle: Text("Chương $lastChapterNumber"),
+          ),
         ],
         const SizedBox(height: 24),
       ],

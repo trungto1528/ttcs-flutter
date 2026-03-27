@@ -53,7 +53,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       );
 
       if (res.statusCode == 200) {
-        // đăng ký xong quay lại login
+        if (!mounted) return;
         Navigator.pop(context);
       } else {
         setState(() {

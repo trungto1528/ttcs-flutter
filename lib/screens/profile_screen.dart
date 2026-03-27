@@ -1,5 +1,9 @@
+import 'dart:convert';
+
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:novel_app/screens/login_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/app_theme_mode.dart';
 
@@ -21,10 +25,29 @@ class _ProfilePageState extends State<ProfilePage> {
   Map<String, dynamic>? user; //  null = chưa login
   final baseAvatar = "http://140.245.45.167:7778/avatar";
 
-  void logout() {
+  void logout() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove("user");
     setState(() {
       user = null;
     });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    loadUser();
+  }
+
+  Future<void> loadUser() async {
+    final prefs = await SharedPreferences.getInstance();
+    final userStr = prefs.getString("user");
+
+    if (userStr != null) {
+      setState(() {
+        user = jsonDecode(userStr);
+      });
+    }
   }
 
   void goLogin() async {
@@ -34,8 +57,11 @@ class _ProfilePageState extends State<ProfilePage> {
     );
 
     if (result != null) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString("user", jsonEncode(result));
+
       setState(() {
-        user = result; // 🔥 nhận user từ login
+        user = result;
       });
     }
   }
@@ -56,21 +82,23 @@ class _ProfilePageState extends State<ProfilePage> {
           ] else ...[
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 12),
-              child: CircleAvatar(
-                radius:100,
-              child: SizedBox(
-                height: 400,
-                width: 400,
-                // child:
-                // ClipRRect(
-                //   borderRadius: BorderRadius.circular(50),
-                  child: Image.network(
-                    baseAvatar+user!['avatarUrl'],
-                    fit: BoxFit.scaleDown,
-                  ),
-                // ),
+              child: Center(
+                child: SizedBox(
+                  width: 100,
+                  height: 100,
+                  child: ClipOval(
+                    child: CachedNetworkImage(
+                      imageUrl: baseAvatar + user!['avatarUrl'],
+                      fit: BoxFit.cover,
+                      placeholder: (context, url) => const Center(
+                        child: CircularProgressIndicator(),
+                      ),
+                      errorWidget: (context, url, error) =>
+                      const Icon(Icons.error),
+                    ),
+                  )
+                ),
               ),
-            ),
             ),
             const SizedBox(height: 10),
             Text(
@@ -84,7 +112,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
           const SizedBox(height: 30),
 
-          /// 🎨 THEME
+          /// THEME
           RadioGroup<AppThemeMode>(
             groupValue: widget.currentMode,
             onChanged: (value) {
@@ -94,14 +122,8 @@ class _ProfilePageState extends State<ProfilePage> {
             },
             child: Column(
               children: const [
-                RadioListTile(
-                  value: AppThemeMode.light,
-                  title: Text("Light Mode"),
-                ),
-                RadioListTile(
-                  value: AppThemeMode.dark,
-                  title: Text("Dark Mode (Kindle)"),
-                ),
+                RadioListTile(value: AppThemeMode.light, title: Text("Sáng")),
+                RadioListTile(value: AppThemeMode.dark, title: Text("Tối")),
                 RadioListTile(
                   value: AppThemeMode.system,
                   title: Text("Theo hệ thống"),

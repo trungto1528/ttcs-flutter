@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:novel_app/route_observer.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'screens/main_screen.dart';
 import 'models/app_theme_mode.dart';
@@ -55,6 +56,7 @@ class _MyAppState extends State<MyApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+    navigatorObservers: [routeObserver],
       debugShowCheckedModeBanner: false,
       themeMode: _flutterThemeMode,
       theme: ThemeData(
@@ -65,7 +67,7 @@ class _MyAppState extends State<MyApp> {
       darkTheme: ThemeData(
         useMaterial3: true,
         brightness: Brightness.dark,
-        scaffoldBackgroundColor: const Color(0xFF000000), // Kindle black
+        scaffoldBackgroundColor: const Color(0xFF000000),
         appBarTheme: const AppBarTheme(
           backgroundColor: Color(0xFF000000),
         ),

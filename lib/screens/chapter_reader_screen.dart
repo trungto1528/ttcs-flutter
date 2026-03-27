@@ -47,10 +47,8 @@ class _ChapterReaderScreenState extends State<ChapterReaderScreen> {
         loading = false;
       });
 
-      // 🔥 Lưu last read
       saveLastRead(widget.storyTitle,widget.chapters[index]["chapterNumber"], index);
     } catch (e) {
-      print(e);
       setState(() => loading = false);
     }
   }
@@ -120,7 +118,7 @@ class _ChapterReaderScreenState extends State<ChapterReaderScreen> {
         ),
       ),
 
-      // 📖 CONTENT
+      //  CONTENT
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -129,7 +127,7 @@ class _ChapterReaderScreenState extends State<ChapterReaderScreen> {
         ],
       ),
 
-      // 🔻 NAVIGATION BAR
+      //  NAVIGATION BAR
       bottomNavigationBar: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         color: Colors.black87,

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:novel_app/screens/story_detail_screen.dart';
@@ -33,7 +34,8 @@ class _SearchScreenState extends State<SearchScreen> {
 
     try {
       final res = await http.get(
-        Uri.parse("http://140.245.45.167:7777/api/stories/search?keyword=$keyword"),
+        Uri.parse(
+            "http://140.245.45.167:7777/api/stories/search?keyword=$keyword"),
       );
 
       final data = jsonDecode(res.body);
@@ -52,7 +54,7 @@ class _SearchScreenState extends State<SearchScreen> {
   void onChanged(String value) {
     if (_debounce?.isActive ?? false) _debounce!.cancel();
 
-    _debounce = Timer(const Duration(milliseconds: 400), () {
+    _debounce = Timer(const Duration(milliseconds: 100), () {
       keyword = value;
       search(keyword);
     });
@@ -65,7 +67,6 @@ class _SearchScreenState extends State<SearchScreen> {
     super.dispose();
   }
 
-  // ================= UI =================
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -116,9 +117,10 @@ class _SearchScreenState extends State<SearchScreen> {
         return ListTile(
           leading: ClipRRect(
             borderRadius: BorderRadius.circular(8),
-            child: Image.network(
-              s.coverUrl ?? "https://placehold.co/400x400/png",
-              fit: BoxFit.cover,
+            child: CachedNetworkImage(
+              width: 50,
+                fit: BoxFit.cover,
+                imageUrl: s.coverUrl ?? "https://placehold.co/400x400/png",
             ),
           ),
           title: Text(s.title),
