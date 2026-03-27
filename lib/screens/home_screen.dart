@@ -1,89 +1,114 @@
-import 'package:flutter/material.dart';
+import 'dart:async';
+import 'dart:convert';
 
-class HomePage extends StatelessWidget {
+import 'package:flutter/material.dart';
+import 'package:novel_app/screens/search_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:novel_app/screens/chapter_reader_screen.dart';
+
+class HomePage extends StatefulWidget {
   const HomePage({super.key});
+
+  @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  String? lastStoryTitle;
+  int? lastChapterIndex;
+  int? lastChapterNumber;
+  late List storyList;
+  bool isSearching = false;
+  String keyword = "";
+  Timer? _debounce;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadLastRead();
+  }
+
+  Future<void> _loadLastRead() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      lastStoryTitle = prefs.getString('lastStoryTitle');
+      lastChapterIndex = prefs.getInt('lastChapterIndex');
+      lastChapterNumber = prefs.getInt('lastChapterNumber');
+      storyList =jsonDecode(prefs.getString('storyList')!);
+
+    });
+  }
+
+  void onSearchChanged(String value) {
+    if (_debounce?.isActive ?? false) _debounce!.cancel();
+
+    _debounce = Timer(const Duration(milliseconds: 400), () {
+      setState(() {
+        keyword = value;
+      });
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("MyNovel")),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.book),
-              const Text(
-                "Continue Reading",
-                style: TextStyle(fontSize: 30, fontWeight: FontWeight.bold),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          // Card(
-          //   child: ListTile(
-          //     title: const Text("Otonari no Tenshi-sama"),
-          //     subtitle: const Text("Chương 124"),
-          //   )
-          // ),
-          Container(
-            margin: const EdgeInsets.symmetric(vertical: 8),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(18),
-              gradient: const LinearGradient(
-                colors: [Color(0xFF1E1E2C), Color(0xFF2C2C3E)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.3),
-                  blurRadius: 10,
-                  offset: const Offset(0, 5),
-                ),
-              ],
-            ),
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                borderRadius: BorderRadius.circular(18),
-                //Function
-                onTap: () {},
-                child: const ListTile(
-                  title: Text(
-                    "Otonari no Tenshi-sama",
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                  subtitle: Text(
-                    "Chương 124",
-                    style: TextStyle(color: Colors.white70),
-                  ),
-                  trailing: Icon(
-                    Icons.arrow_forward_ios,
-                    color: Colors.white70,
-                  ),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 24),
-          const Text(
-            "🆕 Mới cập nhật",
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 12),
-          ...List.generate(
-            15,
-            (index) => ListTile(
-              title: Text("Truyện mới ${index + 1}"),
-              trailing: const Icon(Icons.chevron_right),
-            ),
+       appBar: AppBar(
+        title: const Text("MyNovel"),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.search),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const SearchScreen()),
+              );
+            },
           ),
         ],
       ),
+
+      // 🔥 BODY SWITCH
+      body: buildHome(),
+    );
+  }
+
+  // ================= HOME =================
+  Widget buildHome() {
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        if (lastStoryTitle != null && lastChapterIndex != null) ...[
+          Row(
+            children: const [
+              Icon(Icons.book),
+              SizedBox(width: 8),
+              Text(
+                "Đọc tiếp",
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 12),
+    ListTile(
+      onTap: (){
+        Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => ChapterReaderScreen(
+                  chapters: storyList,
+                  currentIndex: lastChapterIndex!,
+                  storyTitle:lastStoryTitle!
+              ),
+            )
+        );
+      },
+      title: Text(lastStoryTitle!),
+      subtitle: Text("Chương $lastChapterNumber")
+    )
+        ],
+        const SizedBox(height: 24),
+      ],
     );
   }
 }
