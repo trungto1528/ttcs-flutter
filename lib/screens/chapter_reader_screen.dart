@@ -1,4 +1,5 @@
 import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -12,7 +13,7 @@ class ChapterReaderScreen extends StatefulWidget {
     super.key,
     required this.chapters,
     required this.currentIndex,
-    required this.storyTitle
+    required this.storyTitle,
   });
 
   @override
@@ -26,6 +27,7 @@ class _ChapterReaderScreenState extends State<ChapterReaderScreen> {
   bool loading = true;
 
   final baseUrl = "http://140.245.45.167:7777/api";
+  final illusUrl = "http://140.245.45.167:7778/";
 
   @override
   void initState() {
@@ -47,13 +49,21 @@ class _ChapterReaderScreenState extends State<ChapterReaderScreen> {
         loading = false;
       });
 
-      saveLastRead(widget.storyTitle,widget.chapters[index]["chapterNumber"], index);
+      saveLastRead(
+        widget.storyTitle,
+        widget.chapters[index]["chapterNumber"],
+        index,
+      );
     } catch (e) {
       setState(() => loading = false);
     }
   }
 
-  Future<void> saveLastRead(String storyTitle,int chapterNumber, int chapterIndex) async {
+  Future<void> saveLastRead(
+    String storyTitle,
+    int chapterNumber,
+    int chapterIndex,
+  ) async {
     final prefs = await SharedPreferences.getInstance();
     String chapterString = jsonEncode(widget.chapters);
     await prefs.setString('storyList', chapterString);
@@ -90,11 +100,7 @@ class _ChapterReaderScreenState extends State<ChapterReaderScreen> {
     if (block["type"] == "image") {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 12),
-        child: Image.network(
-          block["data"],
-          errorBuilder: (_, __, ___) =>
-          const Text("Image failed to load"),
-        ),
+        child: Image.network(illusUrl + block['data']),
       );
     }
 
@@ -104,9 +110,7 @@ class _ChapterReaderScreenState extends State<ChapterReaderScreen> {
   @override
   Widget build(BuildContext context) {
     if (loading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     return Scaffold(
