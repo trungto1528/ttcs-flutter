@@ -66,13 +66,11 @@ class _LibraryPageState extends State<LibraryPage> with RouteAware {
       );
       List<Story>? list = [];
       for (int c in data) {
-        print(c);
         final Map<String, dynamic> marked = await StoryFetcher().searchLittle(
           c,
         );
         list.add(Story.fromJson(marked));
       }
-      print(library);
       setState(() {
         library = list;
         loading = false;

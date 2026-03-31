@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:novel_app/screens/story_detail_screen.dart';
-import 'package:novel_app/services/auth.dart';
 import 'package:novel_app/services/last_read.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -80,7 +79,6 @@ class _ChapterReaderScreenState extends State<ChapterReaderScreen> {
       });
       final prefs = await SharedPreferences.getInstance();
       String? userString = prefs.getString("user");
-      print(userString);
       if (userString != null) {
         final user =User.fromJson(jsonDecode(userString));
         await LastRead().updateLastRead(
@@ -107,8 +105,6 @@ class _ChapterReaderScreenState extends State<ChapterReaderScreen> {
 
     prevId = index > 0 ? chapters[index - 1]["id"] : null;
     nextId = index < chapters.length - 1 ? chapters[index + 1]["id"] : null;
-
-    print('prevId: $prevId current: $currentChapterId next: $nextId');
   }
 
   Future<void> _saveLastRead(int chapterId) async {

@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:crop_your_image/crop_your_image.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -12,9 +11,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/User.dart';
 import '../models/app_theme_mode.dart';
+import '../route_observer.dart';
 import 'change_password.dart';
 
-class ProfilePage extends StatefulWidget {
+class ProfilePage extends StatefulWidget  {
   final AppThemeMode currentMode;
   final Function(AppThemeMode) onThemeChanged;
 
@@ -28,7 +28,7 @@ class ProfilePage extends StatefulWidget {
   State<ProfilePage> createState() => _ProfilePageState();
 }
 
-class _ProfilePageState extends State<ProfilePage> {
+class _ProfilePageState extends State<ProfilePage>{
   User? user;
   final baseAvatar = "http://140.245.45.167:7778/avatar";
 
@@ -165,7 +165,6 @@ class _ProfilePageState extends State<ProfilePage> {
                 var response = await request.send();
 
                 if (response.statusCode == 200) {
-                  print("api work");
                   final resBody = await response.stream.bytesToString();
                   _onUpdated(resBody);
 
@@ -218,13 +217,17 @@ class _ProfilePageState extends State<ProfilePage> {
                   width: 100,
                   height: 100,
                   child: ClipOval(
-                    child: CachedNetworkImage(
-                      imageUrl: baseAvatar + user!.avatarUrl,
+                    child: Image.network(
+                      "$baseAvatar${user!.avatarUrl}?t=${DateTime.now().millisecondsSinceEpoch}",
+                      key: UniqueKey(),
                       fit: BoxFit.cover,
-                      placeholder: (context, url) =>
-                          const Center(child: CircularProgressIndicator()),
-                      errorWidget: (context, url, error) =>
-                          const Icon(Icons.error),
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return const Center(child: CircularProgressIndicator());
+                      },
+                      errorBuilder: (context, error, stackTrace) {
+                        return const Icon(Icons.error);
+                      },
                     ),
                   ),
                 ),
