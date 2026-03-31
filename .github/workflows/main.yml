@@ -37,10 +37,10 @@ jobs:
           echo "Main version: $MAIN_VERSION"
 
       # 6️⃣ Tạo timestamp cho tag
-      - name: Generate version timestamp
+      - name: Generate timestamp
         run: |
-          TIMESTAMP=$(date -u +"version_%Y_%m_%d_%H_%M")
-          echo "VERSION=$TIMESTAMP" >> $GITHUB_ENV
+          TIMESTAMP=$(date -u +'%Y_%m_%d_%H_%M_UTC')
+          echo "TIMESTAMP=$TIMESTAMP" >> $GITHUB_ENV
 
       # 7️⃣ Tạo Release + tag tự động, upload APK
       - name: Create GitHub Release with tag
