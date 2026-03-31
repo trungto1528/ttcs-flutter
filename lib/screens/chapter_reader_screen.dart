@@ -43,7 +43,16 @@ class _ChapterReaderScreenState extends State<ChapterReaderScreen> {
   void initState() {
     super.initState();
     currentChapterId = widget.chapterId;
-    fetchChapter(currentChapterId!);
+    initData();
+  }
+  Future<void> initData() async {
+    final storyData = await StoryFetcher().fetchStory(widget.storyId);
+
+    chapters = storyData["chapters"];
+    lastStoryTitle = storyData['title'];
+    coverUrl = storyData['coverUrl'];
+
+    await fetchChapter(currentChapterId!);
   }
 
   Future<void> fetchChapter(int id) async {
@@ -53,17 +62,14 @@ class _ChapterReaderScreenState extends State<ChapterReaderScreen> {
       final data = await ChapterFetcher().fetchChapter(id);
 
       currentChapterId = id;
-      print(currentChapterId);
 
-      await updateNextPrev();
+      updateNextPrev();
 
       setState(() {
         chapter = data;
         blocks = data["blocks"];
         lastChapterNumber = data['chapterNumber'];
         loading = false;
-        chapters = chapters;
-        currentChapterId = id;
       });
 
       saveLastRead(id);
@@ -72,11 +78,7 @@ class _ChapterReaderScreenState extends State<ChapterReaderScreen> {
     }
   }
 
-  Future<void> updateNextPrev() async {
-    final data = await StoryFetcher().fetchStory(widget.storyId);
-    chapters = data["chapters"] as List;
-    lastStoryTitle = data['title'];
-    coverUrl = data['coverUrl'];
+  void updateNextPrev() {
     index = chapters.indexWhere((c) => c["id"] == currentChapterId);
 
     if (index == -1) {
@@ -86,8 +88,8 @@ class _ChapterReaderScreenState extends State<ChapterReaderScreen> {
     }
 
     prevId = index > 0 ? chapters[index - 1]["id"] : null;
-
     nextId = index < chapters.length - 1 ? chapters[index + 1]["id"] : null;
+
     print('prevId: $prevId current: $currentChapterId next: $nextId');
   }
 
@@ -209,7 +211,6 @@ class _ChapterReaderScreenState extends State<ChapterReaderScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          Text(currentChapterId!.toString()),
           ...blocks.map((b) => buildBlock(b)),
         ],
       ),

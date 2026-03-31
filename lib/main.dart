@@ -3,11 +3,18 @@ import 'package:novel_app/route_observer.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'screens/main_screen.dart';
 import 'models/app_theme_mode.dart';
-void main() {
-  runApp(const MyApp());
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  final prefs = await SharedPreferences.getInstance();
+  final index = prefs.getInt('themeMode') ?? 2;
+
+  runApp(MyApp(initialMode: AppThemeMode.values[index]));
 }
 class MyApp extends StatefulWidget {
-  const MyApp({super.key});
+  final AppThemeMode initialMode;
+
+  const MyApp({super.key, required this.initialMode});
 
   @override
   State<MyApp> createState() => _MyAppState();
@@ -19,7 +26,7 @@ class _MyAppState extends State<MyApp> {
   @override
   void initState() {
     super.initState();
-    _loadTheme();
+    _themeMode = widget.initialMode;
   }
 
   Future<void> _loadTheme() async {
