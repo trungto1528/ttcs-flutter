@@ -1,4 +1,4 @@
-name: Build & Release APK (auto version + time)
+name: Build & Release APK (Release tag with time)
 
 on:
   push:
@@ -10,68 +10,60 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️ Checkout code
+      # 1️⃣ Checkout code
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # 2️ Setup Flutter
+      # 2️⃣ Setup Flutter
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.41.2'
 
-      # 3️ Lấy thời gian UTC để dùng làm build number
-      - name: Get datetime for build
-        id: datetime
-        run: |
-          NOW=$(date -u +'%Y%m%d%H%M')
-          echo "DATETIME=$NOW" >> $GITHUB_ENV
+      # 3️⃣ Install dependencies
+      - name: Install dependencies
+        run: flutter pub get
 
-      # 4️ Đọc version chính từ pubspec.yaml
+      # 4️⃣ Build APK release
+      - name: Build APK
+        run: flutter build apk --release
+
+      # 5️⃣ Get main version from pubspec.yaml
       - name: Read version from pubspec.yaml
         id: read_version
         run: |
           MAIN_VERSION=$(grep '^version:' pubspec.yaml | awk '{print $2}' | cut -d+ -f1)
           echo "MAIN_VERSION=$MAIN_VERSION" >> $GITHUB_ENV
-          echo "Read main version: $MAIN_VERSION"
+          echo "Main version: $MAIN_VERSION"
 
-      # 5️ Cập nhật version mới (version + build number theo thời gian)
-      - name: Set new version in pubspec.yaml
+      # 6️⃣ Generate timestamp for tag
+      - name: Generate timestamp
         run: |
-          NEW_VERSION="${MAIN_VERSION}+${DATETIME}"
-          echo "Setting new version: $NEW_VERSION"
-          sed -i "s/^version:.*/version: $NEW_VERSION/" pubspec.yaml
+          TIMESTAMP=$(date -u +'%Y%m%d%H%M')
+          echo "TIMESTAMP=$TIMESTAMP" >> $GITHUB_ENV
 
-      # 6️ Install dependencies
-      - name: Install dependencies
-        run: flutter pub get
-
-      # 7️ Build APK release
-      - name: Build APK
-        run: flutter build apk --release
-
-      # 8️ Tạo tag tự động trên GitHub
+      # 7️⃣ Create GitHub Tag with time
       - name: Create GitHub Tag
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
-          TAG="v${MAIN_VERSION}-${DATETIME}"
+          TAG="v${MAIN_VERSION}-${TIMESTAMP}"
           git tag -a "$TAG" -m "Auto tag $TAG"
           git push origin "$TAG"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # 9️ Tạo Release trên GitHub
+      # 8️⃣ Create GitHub Release
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: "v${MAIN_VERSION}-${DATETIME}"
-          name: "v${MAIN_VERSION}-${DATETIME}"
-          body: "Auto build APK version ${MAIN_VERSION}+${DATETIME}"
+          tag_name: "v${MAIN_VERSION}-${TIMESTAMP}"
+          name: "v${MAIN_VERSION}-${TIMESTAMP}"
+          body: "Auto build APK version ${MAIN_VERSION}"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # 10 Upload APK vào Release
+      # 9️⃣ Upload APK to Release
       - name: Upload APK to Release
         uses: softprops/action-gh-release@v1
         with:
