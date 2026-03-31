@@ -48,13 +48,17 @@ class _HomePageState extends State<HomePage> with RouteAware {
     _loadLastRead();
   }
 
+  int? lastStoryId;
+  int? lastChapterId;
+
   Future<void> _loadLastRead() async {
     final prefs = await SharedPreferences.getInstance();
+
     setState(() {
-      lastStoryTitle = prefs.getString('lastStoryTitle');
-      lastChapterIndex = prefs.getInt('lastChapterIndex');
-      lastChapterNumber = prefs.getInt('lastChapterNumber');
-      storyList = jsonDecode(prefs.getString('storyList')!);
+      lastStoryId = prefs.getInt("lastStoryId");
+      lastChapterId = prefs.getInt("lastChapterId");
+      lastChapterNumber=prefs.getInt('lastChapterNumber');
+      lastStoryTitle=prefs.getString('lastStoryTitle');
     });
   }
 
@@ -85,8 +89,6 @@ class _HomePageState extends State<HomePage> with RouteAware {
           ),
         ],
       ),
-
-      // BODY SWITCH
       body: buildHome(),
     );
   }
@@ -95,7 +97,7 @@ class _HomePageState extends State<HomePage> with RouteAware {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        if (lastStoryTitle != null && lastChapterIndex != null) ...[
+        if (lastStoryId != null && lastChapterId != null) ...[
           Row(
             children: const [
               SizedBox(width: 8),
@@ -113,9 +115,8 @@ class _HomePageState extends State<HomePage> with RouteAware {
                 context,
                 MaterialPageRoute(
                   builder: (_) => ChapterReaderScreen(
-                    chapters: storyList,
-                    currentIndex: lastChapterIndex!,
-                    storyTitle: lastStoryTitle!,
+                    storyId: lastStoryId!,
+                    chapterId: lastChapterId!,
                   ),
                 ),
               );

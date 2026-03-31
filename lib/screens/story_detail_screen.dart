@@ -4,6 +4,8 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:novel_app/screens/chapter_reader_screen.dart';
+import 'package:novel_app/widget/expand_text.dart';
+import 'package:novel_app/services/story_fetcher.dart';
 
 class StoryDetailScreen extends StatefulWidget {
   final int storyId;
@@ -15,33 +17,32 @@ class StoryDetailScreen extends StatefulWidget {
 }
 
 class _StoryDetailScreenState extends State<StoryDetailScreen> {
-  Map? story;
+  late Map<String,dynamic> story;
   bool loading = true;
 
   final baseUrl = "http://140.245.45.167:7777/api";
+  final baseCoverUrl = 'http://140.245.45.167:7778/cover/';
 
   @override
   void initState() {
     super.initState();
-    fetchStory();
+    loadStory();
   }
 
-  Future<void> fetchStory() async {
+  Future<void> loadStory() async {
     try {
-      final res = await http.get(
-        Uri.parse("$baseUrl/stories/${widget.storyId}"),
-      );
+      final data = await StoryFetcher().fetchStory(widget.storyId);
 
       setState(() {
-        story = jsonDecode(res.body);
+        story = data;
         loading = false;
       });
     } catch (e) {
       if (!mounted) return;
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Lỗi tải truyện")));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Lỗi tải truyện")),
+      );
     }
   }
 
@@ -51,44 +52,87 @@ class _StoryDetailScreenState extends State<StoryDetailScreen> {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
-    final chapters = story!["chapters"] as List;
+    final chapters = story["chapters"] as List;
 
     return Scaffold(
       appBar: AppBar(title: Text(story!["title"])),
       body: ListView(
         children: [
-          CachedNetworkImage(
-            fit: BoxFit.cover,
-            imageUrl: story!["coverUrl"] ?? "https://placehold.co/800/png",
-          ),
-
+          const Divider(),
           Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
+            padding: EdgeInsets.all(16),
+            child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  story!["title"],
-                  style: const TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(5),
+                  child: CachedNetworkImage(
+                    imageUrl: baseCoverUrl + story!['coverUrl'],
+                    height: 150,
+                    width: 100,
+                    fit: BoxFit.fill,
                   ),
                 ),
-                const SizedBox(height: 8),
-                Text("Tác giả: ${story!["author"] ?? "Unknown"}"),
-                const SizedBox(height: 8),
-                Text(story!["description"] ?? ""),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        story!['title'],
+                        style: TextStyle(fontSize: 24),
+                        maxLines: 5,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      Text(
+                        'Tác giả: ${story!['author']}',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontStyle: FontStyle.italic,
+                        ),
+                        maxLines: 5,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
+          Padding(
+            padding: EdgeInsets.all(16),
+            child: ExpandableText(text: story!['description']),
+          ),
 
-          const Divider(),
-
-          const Padding(
+          // CachedNetworkImage(
+          //   fit: BoxFit.cover,
+          //   imageUrl: story!["coverUrl"] ?? "https://placehold.co/800/png",
+          // ),
+          //
+          // Padding(
+          //   padding: const EdgeInsets.all(16),
+          //   child: Column(
+          //     crossAxisAlignment: CrossAxisAlignment.start,
+          //     children: [
+          //       Text(
+          //         story!["title"],
+          //         style: const TextStyle(
+          //           fontSize: 22,
+          //           fontWeight: FontWeight.bold,
+          //         ),
+          //       ),
+          //       const SizedBox(height: 8),
+          //       Text("Tác giả: ${story!["author"] ?? "Unknown"}"),
+          //       const SizedBox(height: 8),
+          //       Text(story!["description"] ?? ""),
+          //     ],
+          //   ),
+          // ),
+          Padding(
             padding: EdgeInsets.all(16),
             child: Text(
               "Danh sách chương",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
           ),
 
@@ -111,10 +155,9 @@ class _StoryDetailScreenState extends State<StoryDetailScreen> {
                     context,
                     MaterialPageRoute(
                       builder: (_) => ChapterReaderScreen(
-                        chapters: chapters,
-                        currentIndex: i,
-                        storyTitle: story!["title"],
-                      ),
+                        chapterId: c["id"],
+                        storyId: widget.storyId,
+                      )
                     ),
                   );
                 },

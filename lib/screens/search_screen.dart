@@ -1,11 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:novel_app/screens/story_detail_screen.dart';
-
 import 'package:novel_app/models/Story.dart';
+import 'package:novel_app/screens/story_detail_screen.dart';
 
 class SearchScreen extends StatefulWidget {
   const SearchScreen({super.key});
@@ -23,7 +23,6 @@ class _SearchScreenState extends State<SearchScreen> {
   bool isLoading = false;
   String keyword = "";
 
-  // ================= API =================
   Future<void> search(String keyword) async {
     if (keyword.isEmpty) {
       setState(() => stories = []);
@@ -35,7 +34,8 @@ class _SearchScreenState extends State<SearchScreen> {
     try {
       final res = await http.get(
         Uri.parse(
-            "http://140.245.45.167:7777/api/stories/search?keyword=$keyword"),
+          "http://140.245.45.167:7777/api/stories/search?keyword=$keyword",
+        ),
       );
 
       final data = jsonDecode(res.body);
@@ -50,7 +50,6 @@ class _SearchScreenState extends State<SearchScreen> {
     setState(() => isLoading = false);
   }
 
-  // ================= DEBOUNCE =================
   void onChanged(String value) {
     if (_debounce?.isActive ?? false) _debounce!.cancel();
 
@@ -113,17 +112,8 @@ class _SearchScreenState extends State<SearchScreen> {
       itemCount: stories.length,
       itemBuilder: (_, i) {
         final s = stories[i];
-
-        return ListTile(
-          leading: ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: CachedNetworkImage(
-              width: 50,
-                fit: BoxFit.cover,
-                imageUrl: s.coverUrl ?? "https://placehold.co/400x400/png",
-            ),
-          ),
-          title: Text(s.title),
+        return  InkWell(
+          borderRadius: BorderRadius.circular(8),
           onTap: () {
             Navigator.push(
               context,
@@ -132,6 +122,30 @@ class _SearchScreenState extends State<SearchScreen> {
               ),
             );
           },
+          child: Container(
+            padding: EdgeInsets.all(8),
+            child: Row(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: CachedNetworkImage(
+                    width: 70,
+                    height: 105,
+                    fit: BoxFit.cover,
+                    imageUrl: "http://140.245.45.167:7778/cover/${s.coverUrl}",
+                  ),
+                ),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    s.title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                )
+              ],
+            ),
+          ),
         );
       },
     );
