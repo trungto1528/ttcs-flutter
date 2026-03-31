@@ -102,7 +102,7 @@ class _LibraryPageState extends State<LibraryPage> with RouteAware {
         appBar: AppBar(title: const Text("Thư viện")),
         body: Center(
           child: Text(
-            "Bạn cần đăng nhập để lưu và xem truyện yêu thích",
+            "Bạn cần đăng nhập để xem truyện đã đánh dấu",
             style: TextStyle(fontSize: 16),
             textAlign: TextAlign.center,
           ),
