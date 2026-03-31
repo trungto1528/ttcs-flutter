@@ -1,4 +1,4 @@
-name: Build & Release APK (Release tag with time)
+name: Build & Release APK (Flutter 3.41.2, auto tag)
 
 on:
   push:
@@ -10,11 +10,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ Checkout code
+      # 1️⃣ Checkout repo
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # 2️⃣ Setup Flutter
+      # 2️⃣ Setup Flutter 3.41.2
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
@@ -42,13 +42,13 @@ jobs:
           TIMESTAMP=$(date -u +'%Y%m%d%H%M')
           echo "TIMESTAMP=$TIMESTAMP" >> $GITHUB_ENV
 
-      # 7️⃣ Tạo Release + tag tự động (không cần git push)
+      # 7️⃣ Tạo Release + tag tự động, upload APK
       - name: Create GitHub Release with tag
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: "v${MAIN_VERSION}-${TIMESTAMP}"   # tag sẽ tự tạo
-          name: "v${MAIN_VERSION}-${TIMESTAMP}"
-          body: "Auto build APK version ${MAIN_VERSION}"
+          tag_name: "v${{ env.MAIN_VERSION }}-${{ env.TIMESTAMP }}"
+          name: "v${{ env.MAIN_VERSION }}-${{ env.TIMESTAMP }}"
+          body: "Auto build APK version ${{ env.MAIN_VERSION }}"
           files: build/app/outputs/flutter-apk/app-release.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
