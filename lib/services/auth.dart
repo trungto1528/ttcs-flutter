@@ -8,10 +8,7 @@ class Auth {
     final res = await http.post(
       Uri.parse("http://140.245.45.167:7777/api/auth/login"),
       headers: {"Content-Type": "application/json"},
-      body: jsonEncode({
-        "username": username,
-        "password": password,
-      }),
+      body: jsonEncode({"username": username, "password": password}),
     );
     if (res.statusCode == 200) {
       final prefs = await SharedPreferences.getInstance();
@@ -26,10 +23,7 @@ class Auth {
     final res = await http.post(
       Uri.parse("http://140.245.45.167:7777/api/auth/register"),
       headers: {"Content-Type": "application/json"},
-      body: jsonEncode({
-        "username": username,
-        "password": password,
-      }),
+      body: jsonEncode({"username": username, "password": password}),
     );
     if (res.statusCode == 200) {
       return "OK";
@@ -38,9 +32,30 @@ class Auth {
     }
   }
 
+  Future<String> changePassword(
+    String username,
+    String oldPass,
+    String newPass,
+  ) async {
+    final uri =
+        Uri.parse(
+          "http://140.245.45.167:7777/api/users/change-password",
+        ).replace(
+          queryParameters: {
+            "username": username,
+            "oldPassword": oldPass,
+            "newPassword": newPass,
+          },
+        );
+
+    final res = await http.post(uri);
+
+    return res.body;
+  }
+
   Future<String> fetchUser(int userId) async {
     final res = await http.get(
-      Uri.parse("http://140.245.45.167:7777/api/auth/fetch/$userId")
+      Uri.parse("http://140.245.45.167:7777/api/auth/fetch/$userId"),
     );
     return res.body;
   }

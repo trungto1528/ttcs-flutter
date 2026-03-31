@@ -1,7 +1,7 @@
 class User {
   final int id;
   final String username;
-  final String avatarUrl;
+  String avatarUrl;
   final int lastReadStoryId;
   final int lastReadChapterId;
 
