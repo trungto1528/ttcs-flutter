@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
+import '../services/auth.dart';
+
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
 
@@ -17,7 +19,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   String? error;
   bool isLoading = false;
 
-  Future<void> register() async {
+  Future<void> _register() async {
     setState(() {
       error = null;
     });
@@ -43,21 +45,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
     });
 
     try {
-      final res = await http.post(
-        Uri.parse("http://140.245.45.167:7777/api/auth/register"),
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode({
-          "username": usernameController.text,
-          "password": passwordController.text,
-        }),
-      );
+      final res = await Auth().register(usernameController.text, passwordController.text);
 
-      if (res.statusCode == 200) {
+      if (res == "OK") {
         if (!mounted) return;
         Navigator.pop(context);
       } else {
         setState(() {
-          error = res.body;
+          error = res;
         });
       }
     } catch (e) {
@@ -129,7 +124,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             const SizedBox(height: 10),
 
             ElevatedButton(
-              onPressed: isLoading ? null : register,
+              onPressed: isLoading ? null : _register,
               child: isLoading
                   ? const CircularProgressIndicator()
                   : const Text("Đăng ký"),

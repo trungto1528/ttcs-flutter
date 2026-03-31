@@ -1,7 +1,11 @@
+import 'dart:convert';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:novel_app/services/last_read.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../models/User.dart';
 import '../services/chapter_fetcher.dart';
 import '../services/story_fetcher.dart';
 
@@ -43,19 +47,20 @@ class _ChapterReaderScreenState extends State<ChapterReaderScreen> {
   void initState() {
     super.initState();
     currentChapterId = widget.chapterId;
-    initData();
+    _initData();
   }
-  Future<void> initData() async {
+
+  Future<void> _initData() async {
     final storyData = await StoryFetcher().fetchStory(widget.storyId);
 
     chapters = storyData["chapters"];
     lastStoryTitle = storyData['title'];
     coverUrl = storyData['coverUrl'];
 
-    await fetchChapter(currentChapterId!);
+    await _fetchChapter(currentChapterId!);
   }
 
-  Future<void> fetchChapter(int id) async {
+  Future<void> _fetchChapter(int id) async {
     setState(() => loading = true);
 
     try {
@@ -63,7 +68,7 @@ class _ChapterReaderScreenState extends State<ChapterReaderScreen> {
 
       currentChapterId = id;
 
-      updateNextPrev();
+      _updateNextPrev();
 
       setState(() {
         chapter = data;
@@ -71,14 +76,25 @@ class _ChapterReaderScreenState extends State<ChapterReaderScreen> {
         lastChapterNumber = data['chapterNumber'];
         loading = false;
       });
-
-      saveLastRead(id);
+      final prefs = await SharedPreferences.getInstance();
+      final String? userString = prefs.getString("user");
+      print(userString);
+      if (userString != null) {
+        final user =User.fromJson(jsonDecode(userString));
+        await LastRead().updateLastRead(
+          user.id,
+          widget.storyId,
+          widget.chapterId,
+        );
+      } else {
+        _saveLastRead(id);
+      }
     } catch (e) {
       setState(() => loading = false);
     }
   }
 
-  void updateNextPrev() {
+  void _updateNextPrev() {
     index = chapters.indexWhere((c) => c["id"] == currentChapterId);
 
     if (index == -1) {
@@ -93,17 +109,15 @@ class _ChapterReaderScreenState extends State<ChapterReaderScreen> {
     print('prevId: $prevId current: $currentChapterId next: $nextId');
   }
 
-  Future<void> saveLastRead(int chapterId) async {
+  Future<void> _saveLastRead(int chapterId) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt("lastStoryId", widget.storyId);
     await prefs.setInt("lastChapterId", chapterId);
-    await prefs.setString('lastStoryTitle', lastStoryTitle);
-    await prefs.setInt('lastChapterNumber', lastChapterNumber);
   }
 
-  void goNext() {
+  void _goNext() {
     if (nextId != null) {
-      fetchChapter(nextId!);
+      _fetchChapter(nextId!);
     } else {
       showDialog(
         context: context,
@@ -115,9 +129,9 @@ class _ChapterReaderScreenState extends State<ChapterReaderScreen> {
     }
   }
 
-  void goPrev() {
+  void _goPrev() {
     if (prevId != null) {
-      fetchChapter(prevId!);
+      _fetchChapter(prevId!);
     }
   }
 
@@ -191,7 +205,7 @@ class _ChapterReaderScreenState extends State<ChapterReaderScreen> {
                 selected: isCurrent,
                 onTap: () {
                   Navigator.pop(context);
-                  fetchChapter(c["id"]);
+                  _fetchChapter(c["id"]);
                 },
               );
             }),
@@ -210,9 +224,7 @@ class _ChapterReaderScreenState extends State<ChapterReaderScreen> {
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
-        children: [
-          ...blocks.map((b) => buildBlock(b)),
-        ],
+        children: [...blocks.map((b) => buildBlock(b))],
       ),
 
       bottomNavigationBar: Container(
@@ -222,7 +234,7 @@ class _ChapterReaderScreenState extends State<ChapterReaderScreen> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             IconButton(
-              onPressed: goPrev,
+              onPressed: _goPrev,
               icon: const Icon(Icons.arrow_back, color: Colors.white),
             ),
             IconButton(
@@ -235,7 +247,7 @@ class _ChapterReaderScreenState extends State<ChapterReaderScreen> {
               icon: const Icon(Icons.menu, color: Colors.white),
             ),
             IconButton(
-              onPressed: goNext,
+              onPressed: _goNext,
               icon: const Icon(Icons.arrow_forward, color: Colors.white),
             ),
           ],

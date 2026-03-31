@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:novel_app/screens/login_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../models/User.dart';
 import '../models/app_theme_mode.dart';
 
 class ProfilePage extends StatefulWidget {
@@ -22,7 +23,7 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> {
-  Map<String, dynamic>? user; //  null = chưa login
+  User? user;
   final baseAvatar = "http://140.245.45.167:7778/avatar";
 
   void logout() async {
@@ -36,33 +37,28 @@ class _ProfilePageState extends State<ProfilePage> {
   @override
   void initState() {
     super.initState();
-    loadUser();
+    _loadUser();
   }
 
-  Future<void> loadUser() async {
+  Future<void> _loadUser() async {
     final prefs = await SharedPreferences.getInstance();
     final userStr = prefs.getString("user");
 
     if (userStr != null) {
       setState(() {
-        user = jsonDecode(userStr);
+        user = User.fromJson(jsonDecode(userStr));
       });
     }
   }
 
-  void goLogin() async {
+  Future<void> _goLogin() async {
     final result = await Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => const LoginScreen()),
     );
 
-    if (result != null) {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString("user", jsonEncode(result));
-
-      setState(() {
-        user = result;
-      });
+    if (result == true) {
+      await _loadUser();
     }
   }
 
@@ -78,7 +74,7 @@ class _ProfilePageState extends State<ProfilePage> {
             const SizedBox(height: 10),
             const Text("Chưa đăng nhập", textAlign: TextAlign.center),
             const SizedBox(height: 10),
-            ElevatedButton(onPressed: goLogin, child: const Text("Đăng nhập")),
+            ElevatedButton(onPressed: _goLogin, child: const Text("Đăng nhập")),
           ] else ...[
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 12),
@@ -88,7 +84,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   height: 100,
                   child: ClipOval(
                     child: CachedNetworkImage(
-                      imageUrl: baseAvatar + user!['avatarUrl'],
+                      imageUrl: baseAvatar + user!.avatarUrl,
                       fit: BoxFit.cover,
                       placeholder: (context, url) => const Center(
                         child: CircularProgressIndicator(),
@@ -102,7 +98,7 @@ class _ProfilePageState extends State<ProfilePage> {
             ),
             const SizedBox(height: 10),
             Text(
-              user!["username"],
+              user!.username,
               textAlign: TextAlign.center,
               style: const TextStyle(fontSize: 18),
             ),
@@ -112,7 +108,6 @@ class _ProfilePageState extends State<ProfilePage> {
 
           const SizedBox(height: 30),
 
-          /// THEME
           RadioGroup<AppThemeMode>(
             groupValue: widget.currentMode,
             onChanged: (value) {

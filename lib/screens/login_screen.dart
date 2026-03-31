@@ -1,7 +1,10 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
+import '../models/User.dart';
+import '../services/auth.dart';
 import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -17,23 +20,13 @@ class _LoginScreenState extends State<LoginScreen> {
 
   String? error;
 
-  Future<void> login() async {
-    final res = await http.post(
-      Uri.parse("http://140.245.45.167:7777/api/auth/login"),
-      headers: {"Content-Type": "application/json"},
-      body: jsonEncode({
-        "username": usernameController.text,
-        "password": passwordController.text,
-      }),
-    );
-
-    if (res.statusCode == 200) {
-      final user = jsonDecode(res.body);
-
-      Navigator.pop(context, user);
+  Future<void> _login() async {
+    final res=await Auth().login(usernameController.text,passwordController.text);
+    if(res == 'Logged In'){
+    Navigator.pop(context, true);
     } else {
       setState(() {
-        error = res.body;
+        error = res;
       });
     }
   }
@@ -62,7 +55,7 @@ class _LoginScreenState extends State<LoginScreen> {
               Text(error!, style: const TextStyle(color: Colors.red)),
 
             ElevatedButton(
-              onPressed: login,
+              onPressed: _login,
               child: const Text("Đăng nhập"),
             ),
 
@@ -75,7 +68,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 );
               },
-              child: const Text("Chưa có tài khoản? Đăng ký"),
+              child: const Text("Đăng ký"),
             ),
           ],
         ),

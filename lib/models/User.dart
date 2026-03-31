@@ -1,0 +1,35 @@
+class User {
+  final int id;
+  final String username;
+  final String avatarUrl;
+  final int lastReadStoryId;
+  final int lastReadChapterId;
+
+  User({
+    required this.id,
+    required this.username,
+    required this.avatarUrl,
+    required this.lastReadStoryId,
+    required this.lastReadChapterId
+  });
+
+  factory User.fromJson(Map<String, dynamic> json) {
+    return User(
+      id: json["id"],
+      username: json["username"],
+      avatarUrl: json["avatarUrl"],
+      lastReadStoryId: json['lastReadStoryId'],
+      lastReadChapterId: json['lastReadChapterId']
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      "id": id,
+      "username": username,
+      "avatarUrl": avatarUrl,
+      "lastReadStoryId":lastReadStoryId,
+      "lastReadChapterId":lastReadChapterId
+    };
+  }
+}

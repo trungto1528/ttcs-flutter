@@ -1,0 +1,47 @@
+import 'dart:convert';
+
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+
+class Auth {
+  Future<String> login(String username, String password) async {
+    final res = await http.post(
+      Uri.parse("http://140.245.45.167:7777/api/auth/login"),
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode({
+        "username": username,
+        "password": password,
+      }),
+    );
+    if (res.statusCode == 200) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString("user", res.body);
+      return "Logged In";
+    } else {
+      return res.body;
+    }
+  }
+
+  Future<String> register(String username, String password) async {
+    final res = await http.post(
+      Uri.parse("http://140.245.45.167:7777/api/auth/register"),
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode({
+        "username": username,
+        "password": password,
+      }),
+    );
+    if (res.statusCode == 200) {
+      return "OK";
+    } else {
+      return res.body;
+    }
+  }
+
+  Future<String> fetchUser(int userId) async {
+    final res = await http.get(
+      Uri.parse("http://140.245.45.167:7777/api/auth/fetch/$userId")
+    );
+    return res.body;
+  }
+}

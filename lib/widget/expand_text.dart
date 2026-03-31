@@ -36,9 +36,9 @@ class _ExpandableTextState extends State<ExpandableText> {
           },
           child: Text(
             isExpanded ? "Ẩn đi" : "Xem thêm",
-            style: const TextStyle(
-              color: Colors.black,
-              fontSize:15,
+            style: TextStyle(
+              color: Theme.of(context).textTheme.bodyMedium?.color,
+              fontSize: 15,
               fontWeight: FontWeight.w900,
             ),
           ),

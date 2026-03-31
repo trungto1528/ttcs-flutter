@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:novel_app/models/Story.dart';
 import 'package:novel_app/screens/story_detail_screen.dart';
+import 'package:novel_app/services/story_fetcher.dart';
 
 class SearchScreen extends StatefulWidget {
   const SearchScreen({super.key});
@@ -23,7 +24,7 @@ class _SearchScreenState extends State<SearchScreen> {
   bool isLoading = false;
   String keyword = "";
 
-  Future<void> search(String keyword) async {
+  Future<void> _search(String keyword) async {
     if (keyword.isEmpty) {
       setState(() => stories = []);
       return;
@@ -31,31 +32,22 @@ class _SearchScreenState extends State<SearchScreen> {
 
     setState(() => isLoading = true);
 
-    try {
-      final res = await http.get(
-        Uri.parse(
-          "http://140.245.45.167:7777/api/stories/search?keyword=$keyword",
-        ),
-      );
 
-      final data = jsonDecode(res.body);
+      final data = await StoryFetcher().search(keyword);
 
       setState(() {
         stories = data.map<Story>((e) => Story.fromJson(e)).toList();
       });
-    } catch (e) {
-      debugPrint(e.toString());
-    }
 
     setState(() => isLoading = false);
   }
 
-  void onChanged(String value) {
+  void _onChanged(String value) {
     if (_debounce?.isActive ?? false) _debounce!.cancel();
 
     _debounce = Timer(const Duration(milliseconds: 100), () {
       keyword = value;
-      search(keyword);
+      _search(keyword);
     });
   }
 
@@ -87,7 +79,7 @@ class _SearchScreenState extends State<SearchScreen> {
               },
             ),
           ),
-          onChanged: onChanged,
+          onChanged: _onChanged,
         ),
       ),
 
