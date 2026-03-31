@@ -2,6 +2,8 @@ import 'dart:convert';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:novel_app/screens/story_detail_screen.dart';
+import 'package:novel_app/services/auth.dart';
 import 'package:novel_app/services/last_read.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -27,7 +29,7 @@ class _ChapterReaderScreenState extends State<ChapterReaderScreen> {
   Map<String, dynamic>? chapter;
   List blocks = [];
   List chapters = [];
-  int? currentChapterId;
+  late int currentChapterId;
   late int lastChapterNumber;
   int? nextId;
   int? prevId;
@@ -57,7 +59,7 @@ class _ChapterReaderScreenState extends State<ChapterReaderScreen> {
     lastStoryTitle = storyData['title'];
     coverUrl = storyData['coverUrl'];
 
-    await _fetchChapter(currentChapterId!);
+    await _fetchChapter(currentChapterId);
   }
 
   Future<void> _fetchChapter(int id) async {
@@ -77,14 +79,14 @@ class _ChapterReaderScreenState extends State<ChapterReaderScreen> {
         loading = false;
       });
       final prefs = await SharedPreferences.getInstance();
-      final String? userString = prefs.getString("user");
+      String? userString = prefs.getString("user");
       print(userString);
       if (userString != null) {
         final user =User.fromJson(jsonDecode(userString));
         await LastRead().updateLastRead(
           user.id,
           widget.storyId,
-          widget.chapterId,
+          currentChapterId,
         );
       } else {
         _saveLastRead(id);
@@ -171,26 +173,43 @@ class _ChapterReaderScreenState extends State<ChapterReaderScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   ClipRRect(
-                    borderRadius: BorderRadius.circular(5),
+                    borderRadius: BorderRadius.circular(8),
                     child: CachedNetworkImage(
-                      imageUrl: '$baseCoverUrl$coverUrl',
-                      height: 150,
-                      width: 100,
-                      fit: BoxFit.fill,
+                      imageUrl: "$baseCoverUrl/$coverUrl",
+                      width: 80,
+                      height: 110,
+                      fit: BoxFit.cover,
                     ),
                   ),
-                  const SizedBox(width: 10),
+
+                  const SizedBox(width: 12),
+
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          lastStoryTitle,
-                          style: TextStyle(fontSize: 16),
-                          maxLines: 4,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
+                    child: GestureDetector(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => StoryDetailScreen(storyId: widget.storyId),
+                          ),
+                        );
+                      },
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            lastStoryTitle,
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 6),
+                          Text("Chương $lastChapterNumber"),
+                        ],
+                      ),
                     ),
                   ),
                 ],

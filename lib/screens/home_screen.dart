@@ -76,8 +76,10 @@ class _HomePageState extends State<HomePage> with RouteAware {
       var user = User.fromJson(jsonDecode(storedUser));
       uid = user.id;
       storedUser =await Auth().fetchUser(uid);
+      print("start fetch user");
       user = User.fromJson(jsonDecode(storedUser));
-      if (user.lastReadStoryId != -1 || user.lastReadChapterId != -1) {
+      print("done fetch user");
+      if (user.lastReadStoryId != -1 && user.lastReadChapterId != -1) {
         storedStoryId = user.lastReadStoryId;
         storedChapterId = user.lastReadChapterId;
       }
@@ -91,6 +93,7 @@ class _HomePageState extends State<HomePage> with RouteAware {
       final chapterData = await ChapterFetcher().fetchChapter(storedChapterId);
       chapterNumber = chapterData['chapterNumber'];
     }
+    print('home:$storedStoryId,$storedChapterId');
     setState(() {
       userId = uid;
       lastStoryId = storedStoryId;

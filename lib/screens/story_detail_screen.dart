@@ -171,7 +171,8 @@ class _StoryDetailScreenState extends State<StoryDetailScreen> {
                 });
               },
             )
-          ],title: Text(story["title"])),
+          ],
+          title: Text(story["title"])),
       body: ListView(
         children: [
           const Divider(),
