@@ -28,7 +28,7 @@ jobs:
       - name: Build APK
         run: flutter build apk --release
 
-      # 5️⃣ Get main version from pubspec.yaml
+      # 5️⃣ Lấy version chính từ pubspec.yaml
       - name: Read version from pubspec.yaml
         id: read_version
         run: |
@@ -36,37 +36,19 @@ jobs:
           echo "MAIN_VERSION=$MAIN_VERSION" >> $GITHUB_ENV
           echo "Main version: $MAIN_VERSION"
 
-      # 6️⃣ Generate timestamp for tag
+      # 6️⃣ Tạo timestamp cho tag
       - name: Generate timestamp
         run: |
           TIMESTAMP=$(date -u +'%Y%m%d%H%M')
           echo "TIMESTAMP=$TIMESTAMP" >> $GITHUB_ENV
 
-      # 7️⃣ Create GitHub Tag with time
-      - name: Create GitHub Tag
-        run: |
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
-          TAG="v${MAIN_VERSION}-${TIMESTAMP}"
-          git tag -a "$TAG" -m "Auto tag $TAG"
-          git push origin "$TAG"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      # 8️⃣ Create GitHub Release
-      - name: Create GitHub Release
+      # 7️⃣ Tạo Release + tag tự động (không cần git push)
+      - name: Create GitHub Release with tag
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: "v${MAIN_VERSION}-${TIMESTAMP}"
+          tag_name: "v${MAIN_VERSION}-${TIMESTAMP}"   # tag sẽ tự tạo
           name: "v${MAIN_VERSION}-${TIMESTAMP}"
           body: "Auto build APK version ${MAIN_VERSION}"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      # 9️⃣ Upload APK to Release
-      - name: Upload APK to Release
-        uses: softprops/action-gh-release@v1
-        with:
           files: build/app/outputs/flutter-apk/app-release.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
