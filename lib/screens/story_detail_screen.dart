@@ -185,8 +185,8 @@ class _StoryDetailScreenState extends State<StoryDetailScreen> {
                   borderRadius: BorderRadius.circular(5),
                   child: CachedNetworkImage(
                     imageUrl: baseCoverUrl + story['coverUrl'],
-                    height: 150,
-                    width: 100,
+                    height: 180,
+                    width: 120,
                     fit: BoxFit.fill,
                   ),
                 ),
@@ -198,11 +198,20 @@ class _StoryDetailScreenState extends State<StoryDetailScreen> {
                       Text(
                         story['title'],
                         style: TextStyle(fontSize: 24),
-                        maxLines: 5,
+                        maxLines: 3,
                         overflow: TextOverflow.ellipsis,
                       ),
                       Text(
                         'Tác giả: ${story['author']}',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontStyle: FontStyle.italic,
+                        ),
+                        maxLines: 5,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      Text(
+                        'Đăng bởi: ${story['createdByName']}',
                         style: TextStyle(
                           fontSize: 18,
                           fontStyle: FontStyle.italic,

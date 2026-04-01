@@ -2,6 +2,7 @@ class User {
   final int id;
   final String username;
   String avatarUrl;
+  String displayName;
   final int lastReadStoryId;
   final int lastReadChapterId;
 
@@ -9,6 +10,7 @@ class User {
     required this.id,
     required this.username,
     required this.avatarUrl,
+    required this.displayName,
     required this.lastReadStoryId,
     required this.lastReadChapterId
   });
@@ -18,6 +20,7 @@ class User {
       id: json["id"],
       username: json["username"],
       avatarUrl: json["avatarUrl"],
+      displayName: json['displayName'],
       lastReadStoryId: json['lastReadStoryId'],
       lastReadChapterId: json['lastReadChapterId']
     );

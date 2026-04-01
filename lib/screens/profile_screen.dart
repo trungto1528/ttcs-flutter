@@ -11,10 +11,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/User.dart';
 import '../models/app_theme_mode.dart';
-import '../route_observer.dart';
+import '../services/auth.dart';
 import 'change_password.dart';
 
-class ProfilePage extends StatefulWidget  {
+class ProfilePage extends StatefulWidget {
   final AppThemeMode currentMode;
   final Function(AppThemeMode) onThemeChanged;
 
@@ -28,7 +28,47 @@ class ProfilePage extends StatefulWidget  {
   State<ProfilePage> createState() => _ProfilePageState();
 }
 
-class _ProfilePageState extends State<ProfilePage>{
+class _EditDisplayNameDialog extends StatefulWidget {
+  final String currentName;
+
+  const _EditDisplayNameDialog({required this.currentName});
+
+  @override
+  State<_EditDisplayNameDialog> createState() => _EditDisplayNameDialogState();
+}
+
+class _EditDisplayNameDialogState extends State<_EditDisplayNameDialog> {
+  late TextEditingController controller;
+
+  @override
+  void initState() {
+    super.initState();
+    controller = TextEditingController(text: widget.currentName);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text("Đổi tên hiển thị"),
+      content: TextField(
+        controller: controller,
+        decoration: const InputDecoration(labelText: "Tên hiển thị"),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context), // huỷ
+          child: const Text("Huỷ"),
+        ),
+        ElevatedButton(
+          onPressed: () => Navigator.pop(context, controller.text), // lưu
+          child: const Text("Lưu"),
+        ),
+      ],
+    );
+  }
+}
+
+class _ProfilePageState extends State<ProfilePage> {
   User? user;
   final baseAvatar = "http://140.245.45.167:7778/avatar";
 
@@ -234,11 +274,46 @@ class _ProfilePageState extends State<ProfilePage>{
               ),
             ),
             const SizedBox(height: 10),
-
-            Text(
-              user!.username,
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 18),
+            Center(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    user!.displayName,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  InkWell(
+                    onTap: () async {
+                      final newName = await showDialog<String>(
+                        context: context,
+                        builder: (context) => _EditDisplayNameDialog(
+                          currentName: user!.displayName,
+                        ),
+                      );
+                      if (newName != null && newName.isNotEmpty) {
+                        final result = await Auth().updateDisplayName(
+                          user!.id,
+                          newName,
+                        );
+                        if (result == "OK") {
+                          setState(() {
+                            user!.displayName = newName;
+                          });
+                        } else {
+                          ScaffoldMessenger.of(
+                            context,
+                          ).showSnackBar(SnackBar(content: Text(result)));
+                        }
+                      }
+                    },
+                    child: const Icon(Icons.edit, size: 20),
+                  ),
+                ],
+              ),
             ),
 
             const SizedBox(height: 20),

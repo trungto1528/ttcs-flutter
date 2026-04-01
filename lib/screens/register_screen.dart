@@ -1,6 +1,4 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 
 import '../services/auth.dart';
 
@@ -15,7 +13,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final usernameController = TextEditingController();
   final passwordController = TextEditingController();
   final confirmController = TextEditingController();
-
+  final displayNameController = TextEditingController();
   String? error;
   bool isLoading = false;
 
@@ -24,8 +22,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
       error = null;
     });
 
-    // ✅ validate cơ bản
-    if (usernameController.text.isEmpty ||
+    if (displayNameController.text.isEmpty ||
+        usernameController.text.isEmpty ||
         passwordController.text.isEmpty) {
       setState(() {
         error = "Vui lòng nhập đầy đủ thông tin";
@@ -45,7 +43,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
     });
 
     try {
-      final res = await Auth().register(usernameController.text, passwordController.text);
+      final res = await Auth().register(
+        usernameController.text,
+        passwordController.text,
+        displayNameController.text,
+      );
 
       if (res == "OK") {
         if (!mounted) return;
@@ -82,7 +84,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
             ),
 
             const SizedBox(height: 20),
-
+            TextField(
+              controller: displayNameController,
+              decoration: const InputDecoration(
+                labelText: "Tên hiển thị",
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 12),
             TextField(
               controller: usernameController,
               decoration: const InputDecoration(
@@ -116,10 +125,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             const SizedBox(height: 20),
 
             if (error != null)
-              Text(
-                error!,
-                style: const TextStyle(color: Colors.red),
-              ),
+              Text(error!, style: const TextStyle(color: Colors.red)),
 
             const SizedBox(height: 10),
 

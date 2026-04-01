@@ -19,11 +19,19 @@ class Auth {
     }
   }
 
-  Future<String> register(String username, String password) async {
+  Future<String> register(
+    String username,
+    String password,
+    String displayName,
+  ) async {
     final res = await http.post(
       Uri.parse("http://140.245.45.167:7777/api/auth/register"),
       headers: {"Content-Type": "application/json"},
-      body: jsonEncode({"username": username, "password": password}),
+      body: jsonEncode({
+        "username": username,
+        "password": password,
+        'displayName': displayName,
+      }),
     );
     if (res.statusCode == 200) {
       return "OK";
@@ -58,5 +66,26 @@ class Auth {
       Uri.parse("http://140.245.45.167:7777/api/auth/fetch/$userId"),
     );
     return res.body;
+  }
+  Future<String> updateDisplayName(int userId, String newName) async {
+    try {
+      final response = await http.post(
+        Uri.parse("http://140.245.45.167:7777/api/users/$userId/displayName"),
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: jsonEncode({
+          "displayName": newName,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        return "OK";
+      } else {
+        return jsonDecode(response.body)["message"] ?? "Lỗi server";
+      }
+    } catch (e) {
+      return "Lỗi kết nối";
+    }
   }
 }
