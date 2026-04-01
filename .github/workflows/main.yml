@@ -48,7 +48,7 @@ jobs:
         with:
           tag_name: "v${{ env.MAIN_VERSION }}-${{ env.TIMESTAMP }}"
           name: "v${{ env.MAIN_VERSION }}-${{ env.TIMESTAMP }}"
-          body: "Auto build APK version ${{ env.MAIN_VERSION }}"
+          body: "body: ${{ github.event.head_commit.message }}"
           files: build/app/outputs/flutter-apk/app-release.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
