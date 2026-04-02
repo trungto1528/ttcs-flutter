@@ -4,7 +4,9 @@ on:
   push:
     branches:
       - main
+
 permissions: write-all
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -24,9 +26,20 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      # 4️⃣ Build APK release
+      # 4️⃣ Build APK release (Hiện tại tạo ra app-release.apk chưa ký chính thức)
       - name: Build APK
         run: flutter build apk --release
+
+      # ⚠️ BƯỚC MỚI: Sign APK với Keystore từ Secrets
+      - name: Sign APK
+        id: sign_app
+        uses: r0adkll/sign-android-release@v1
+        with:
+          releaseDirectory: build/app/outputs/flutter-apk
+          signingKeyBase64: ${{ secrets.KEYSTORE_BASE64 }}
+          alias: ${{ secrets.KEY_ALIAS }}
+          keyStorePassword: ${{ secrets.STORE_PASSWORD }}
+          keyPassword: ${{ secrets.KEY_PASSWORD }}
 
       # 5️⃣ Lấy version chính từ pubspec.yaml
       - name: Read version from pubspec.yaml
@@ -42,13 +55,14 @@ jobs:
           TIMESTAMP=$(date -u +'%Y_%m_%d_%H_%M_UTC')
           echo "TIMESTAMP=$TIMESTAMP" >> $GITHUB_ENV
 
-      # 7️⃣ Tạo Release + tag tự động, upload APK
+      # 7️⃣ Tạo Release + tag tự động, upload APK ĐÃ KÝ
       - name: Create GitHub Release with tag
         uses: softprops/action-gh-release@v1
         with:
           tag_name: "v${{ env.MAIN_VERSION }}-${{ env.TIMESTAMP }}"
           name: "v${{ env.MAIN_VERSION }}-${{ env.TIMESTAMP }}"
-          body: "body: ${{ github.event.head_commit.message }}"
-          files: build/app/outputs/flutter-apk/app-release.apk
+          body: "Commit message: ${{ github.event.head_commit.message }}"
+          # Quan trọng: Sử dụng output từ bước Sign thay vì đường dẫn cứng
+          files: ${{ steps.sign_app.outputs.signedReleaseFile }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
