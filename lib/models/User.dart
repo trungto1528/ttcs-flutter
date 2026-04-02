@@ -31,6 +31,7 @@ class User {
       "id": id,
       "username": username,
       "avatarUrl": avatarUrl,
+      "displayName":displayName,
       "lastReadStoryId":lastReadStoryId,
       "lastReadChapterId":lastReadChapterId
     };
