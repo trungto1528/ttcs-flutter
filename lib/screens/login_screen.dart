@@ -1,9 +1,5 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
 
-import '../models/User.dart';
 import '../services/auth.dart';
 import 'register_screen.dart';
 
@@ -21,9 +17,12 @@ class _LoginScreenState extends State<LoginScreen> {
   String? error;
 
   Future<void> _login() async {
-    final res=await Auth().login(usernameController.text,passwordController.text);
-    if(res == 'Logged In'){
-    Navigator.pop(context, true);
+    final res = await Auth().login(
+      usernameController.text,
+      passwordController.text,
+    );
+    if (res == 'Logged In') {
+      Navigator.pop(context, true);
     } else {
       setState(() {
         error = res;
@@ -41,32 +40,36 @@ class _LoginScreenState extends State<LoginScreen> {
           children: [
             TextField(
               controller: usernameController,
-              decoration: const InputDecoration(labelText: "Username"),
+              decoration: const InputDecoration(labelText: "Tên đăng nhập"),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: passwordController,
               obscureText: true,
-              decoration: const InputDecoration(labelText: "Password"),
+              decoration: const InputDecoration(labelText: "Mật khẩu"),
             ),
             const SizedBox(height: 20),
 
             if (error != null)
               Text(error!, style: const TextStyle(color: Colors.red)),
 
-            ElevatedButton(
-              onPressed: _login,
-              child: const Text("Đăng nhập"),
-            ),
+            ElevatedButton(onPressed: _login, child: const Text("Đăng nhập")),
 
             TextButton(
-              onPressed: () {
-                Navigator.push(
+              onPressed: () async {
+                final result = await Navigator.push<bool>(
                   context,
-                  MaterialPageRoute(
-                    builder: (_) => const RegisterScreen(),
-                  ),
+                  MaterialPageRoute(builder: (_) => const RegisterScreen()),
                 );
+
+                if (result == true) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text("Đã đăng ký thành công"),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                }
               },
               child: const Text("Đăng ký"),
             ),

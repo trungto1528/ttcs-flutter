@@ -51,7 +51,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
       if (res == "OK") {
         if (!mounted) return;
-        Navigator.pop(context);
+        Navigator.pop(context,true);
       } else {
         setState(() {
           error = res;
@@ -95,7 +95,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             TextField(
               controller: usernameController,
               decoration: const InputDecoration(
-                labelText: "Username",
+                labelText: "Tên đăng nhập",
                 border: OutlineInputBorder(),
               ),
             ),
@@ -106,7 +106,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               controller: passwordController,
               obscureText: true,
               decoration: const InputDecoration(
-                labelText: "Password",
+                labelText: "Mật khẩu",
                 border: OutlineInputBorder(),
               ),
             ),
@@ -117,7 +117,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               controller: confirmController,
               obscureText: true,
               decoration: const InputDecoration(
-                labelText: "Confirm Password",
+                labelText: "Xác nhận mật khẩu",
                 border: OutlineInputBorder(),
               ),
             ),
