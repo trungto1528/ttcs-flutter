@@ -151,11 +151,7 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  Future<void> _changeAvatar(
-    BuildContext context,
-    String username,
-    Function(String newUrl) _onUpdated,
-  ) async {
+  Future<void> _changeAvatar(BuildContext context, String username) async {
     final picker = ImagePicker();
     final pickedFile = await picker.pickImage(source: ImageSource.gallery);
     if (pickedFile == null) return;
@@ -205,12 +201,10 @@ class _ProfilePageState extends State<ProfilePage> {
                 var response = await request.send();
 
                 if (response.statusCode == 200) {
-                  final resBody = await response.stream.bytesToString();
-                  _onUpdated(resBody);
-
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text("Đổi avatar thành công")),
                   );
+                  _loadUser();
                 } else {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text("Upload thất bại")),
@@ -346,13 +340,7 @@ class _ProfilePageState extends State<ProfilePage> {
               ),
               tileColor: Theme.of(context).cardColor,
               onTap: () {
-                _changeAvatar(context, user!.username, (newUrl) async {
-                  setState(() {
-                    user!.avatarUrl = newUrl;
-                  });
-                  final prefs = await SharedPreferences.getInstance();
-                  await prefs.setString("user", jsonEncode(user));
-                });
+                _changeAvatar(context, user!.username);
               },
             ),
 
