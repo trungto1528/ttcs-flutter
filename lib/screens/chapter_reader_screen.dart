@@ -13,11 +13,13 @@ import '../services/story_fetcher.dart';
 class ChapterReaderScreen extends StatefulWidget {
   final int chapterId;
   final int storyId;
+  final int createdById; // 👈 THÊM
 
   const ChapterReaderScreen({
     super.key,
     required this.chapterId,
     required this.storyId,
+    required this.createdById,
   });
 
   @override
@@ -33,9 +35,9 @@ class _ChapterReaderScreenState extends State<ChapterReaderScreen> {
   int? nextId;
   int? prevId;
   late String lastStoryTitle;
-  late final coverUrl;
+  late final String coverUrl;
   late int index;
-
+  List chaptersByUser = [];
   bool loading = true;
 
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
@@ -54,9 +56,20 @@ class _ChapterReaderScreenState extends State<ChapterReaderScreen> {
   Future<void> _initData() async {
     final storyData = await StoryFetcher().fetchStory(widget.storyId);
 
-    chapters = storyData["chapters"];
-    lastStoryTitle = storyData['title'];
-    coverUrl = storyData['coverUrl'];
+    final raw = storyData["chapters"] as List;
+
+    final filtered = raw.where((c) {
+      return c["createdById"] == widget.createdById;
+    }).toList();
+
+    filtered.sort((a, b) =>
+        (a["chapterNumber"] as int).compareTo(b["chapterNumber"] as int));
+
+    setState(() {
+      chapters = filtered;
+      lastStoryTitle = storyData['title'];
+      coverUrl = storyData['coverUrl'];
+    });
 
     await _fetchChapter(currentChapterId);
   }
@@ -85,6 +98,7 @@ class _ChapterReaderScreenState extends State<ChapterReaderScreen> {
           user.id,
           widget.storyId,
           currentChapterId,
+          widget.createdById
         );
       } else {
         _saveLastRead(id);
@@ -111,6 +125,7 @@ class _ChapterReaderScreenState extends State<ChapterReaderScreen> {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt("lastStoryId", widget.storyId);
     await prefs.setInt("lastChapterId", chapterId);
+    await prefs.setInt('lastReadCreatedById',widget.createdById);
   }
 
   void _goNext() {
@@ -156,8 +171,10 @@ class _ChapterReaderScreenState extends State<ChapterReaderScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (loading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    if (loading || chapter == null) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
     }
 
     return Scaffold(

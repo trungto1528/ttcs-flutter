@@ -1,9 +1,7 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'package:novel_app/models/Story.dart';
 import 'package:novel_app/screens/story_detail_screen.dart';
 import 'package:novel_app/services/story_fetcher.dart';

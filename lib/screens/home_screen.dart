@@ -22,7 +22,6 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> with RouteAware {
   String? lastStoryTitle;
-  int? lastChapterIndex;
   int? lastChapterNumber;
   late List storyList;
   bool isSearching = false;
@@ -58,6 +57,7 @@ class _HomePageState extends State<HomePage> with RouteAware {
   int? userId;
   int? lastStoryId;
   int? lastChapterId;
+  int? lastReadCreatedById;
 
   Future<void> _loadLastRead() async {
     final prefs = await SharedPreferences.getInstance();
@@ -65,6 +65,7 @@ class _HomePageState extends State<HomePage> with RouteAware {
     var storedUser = prefs.getString('user');
     int? storedStoryId = prefs.getInt("lastStoryId");
     int? storedChapterId = prefs.getInt("lastChapterId");
+    int? storedCreatedById = prefs.getInt('lastReadCreatedById');
 
     String? storyTitle;
     String? cover;
@@ -77,13 +78,15 @@ class _HomePageState extends State<HomePage> with RouteAware {
       uid = user.id;
       storedUser =await Auth().fetchUser(uid);
       user = User.fromJson(jsonDecode(storedUser));
-      if (user.lastReadStoryId != -1 && user.lastReadChapterId != -1) {
+      if (user.lastReadStoryId != -1 && user.lastReadChapterId != -1&& user.lastReadCreatedById != -1) {
         storedStoryId = user.lastReadStoryId;
         storedChapterId = user.lastReadChapterId;
+        storedCreatedById = user.lastReadCreatedById;
       }
     }
+    print('home:$storedStoryId,$storedChapterId,$storedCreatedById');
 
-    if (storedStoryId != null && storedChapterId != null) {
+    if (storedStoryId != null && storedChapterId != null && storedCreatedById != null) {
       final storyData = await StoryFetcher().fetchStory(storedStoryId);
       storyTitle = storyData['title'];
       cover = storyData['coverUrl'];
@@ -91,11 +94,12 @@ class _HomePageState extends State<HomePage> with RouteAware {
       final chapterData = await ChapterFetcher().fetchChapter(storedChapterId);
       chapterNumber = chapterData['chapterNumber'];
     }
-    print('home:$storedStoryId,$storedChapterId');
+
     setState(() {
       userId = uid;
       lastStoryId = storedStoryId;
       lastChapterId = storedChapterId;
+      lastReadCreatedById = storedCreatedById;
       lastStoryTitle = storyTitle;
       coverUrl = cover;
       lastChapterNumber = chapterNumber;
@@ -137,7 +141,7 @@ class _HomePageState extends State<HomePage> with RouteAware {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        if (lastStoryId != null && lastChapterId != null) ...[
+        if (lastStoryId != null && lastChapterId != null && lastReadCreatedById!=null) ...[
           const SizedBox(width: 8),
           Text(
             "Đọc tiếp",
@@ -168,6 +172,7 @@ class _HomePageState extends State<HomePage> with RouteAware {
                         builder: (_) => ChapterReaderScreen(
                           storyId: lastStoryId!,
                           chapterId: lastChapterId!,
+                          createdById: lastReadCreatedById!,
                         ),
                       ),
                     );

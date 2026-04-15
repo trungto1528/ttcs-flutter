@@ -12,7 +12,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/User.dart';
 import '../models/app_theme_mode.dart';
 import '../services/auth.dart';
+import 'approve_screen.dart';
 import 'change_password.dart';
+import 'create_chapter_screen.dart';
+import 'create_story_screen.dart';
+import 'my_stories.dart';
 
 class ProfilePage extends StatefulWidget {
   final AppThemeMode currentMode;
@@ -317,6 +321,79 @@ class _ProfilePageState extends State<ProfilePage> {
             ),
 
             const SizedBox(height: 20),
+            ListTile(
+              leading: const Icon(Icons.add_box_outlined),
+              title: const Text("Đăng truyện mới"),
+              trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              tileColor: Theme.of(context).cardColor,
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const CreateStoryScreen()),
+                );
+              },
+            ),
+            const SizedBox(height: 10),
+            ListTile(
+              leading: const Icon(Icons.post_add_outlined),
+              title: const Text("Đăng chương mới"),
+              trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              tileColor: Theme.of(context).cardColor,
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const CreateChapterScreen(),
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 10),
+            ListTile(
+              leading: const Icon(Icons.menu_book),
+              title: const Text("Truyện của tôi"),
+              trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              tileColor: Theme.of(context).cardColor,
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => MyStoriesScreen(userId: user!.id),
+                  ),
+                );
+              },
+            ),
+            if (user != null && user!.role == "ADMIN") ...[
+              const SizedBox(height: 10),
+
+              ListTile(
+                leading: const Icon(Icons.fact_check),
+                title: const Text("Duyệt truyện"),
+                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                tileColor: Theme.of(context).cardColor,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => AdminApproveScreen(adminId:user!.id),
+                    ),
+                  );
+                },
+              ),
+            ],
+            const SizedBox(height: 10),
             ListTile(
               leading: const Icon(Icons.lock_outline),
               title: const Text("Đổi mật khẩu"),

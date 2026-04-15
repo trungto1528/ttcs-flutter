@@ -3,9 +3,9 @@ import 'dart:convert';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:novel_app/screens/chapter_reader_screen.dart';
-import 'package:novel_app/widget/expand_text.dart';
-import 'package:novel_app/services/story_fetcher.dart';
 import 'package:novel_app/services/bookmark.dart';
+import 'package:novel_app/services/story_fetcher.dart';
+import 'package:novel_app/widget/expand_text.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/User.dart';
@@ -21,12 +21,12 @@ class StoryDetailScreen extends StatefulWidget {
 }
 
 class _StoryDetailScreenState extends State<StoryDetailScreen> {
-  late Map<String,dynamic> story;
+  late Map<String, dynamic> story;
   User? user;
   bool storyLoading = true;
   bool bookmarkLoading = false;
   bool isSaved = false;
-
+  Map<int, List<dynamic>> groupedChapters = {};
   final baseUrl = "http://140.245.45.167:7777/api";
   final baseCoverUrl = 'http://140.245.45.167:7778/cover/';
 
@@ -41,6 +41,7 @@ class _StoryDetailScreenState extends State<StoryDetailScreen> {
     await _loadStory();
     await _loadSaved();
   }
+
   void _showLoginRequiredDialog() {
     showDialog(
       context: context,
@@ -57,9 +58,7 @@ class _StoryDetailScreenState extends State<StoryDetailScreen> {
               Navigator.pop(context);
               final loginResult = await Navigator.push(
                 context,
-                MaterialPageRoute(
-                  builder: (_) => LoginScreen(),
-                ),
+                MaterialPageRoute(builder: (_) => LoginScreen()),
               );
               if (loginResult == true) {
                 await _loadUser();
@@ -72,6 +71,7 @@ class _StoryDetailScreenState extends State<StoryDetailScreen> {
       ),
     );
   }
+
   Future<void> _loadUser() async {
     final prefs = await SharedPreferences.getInstance();
     final userStr = prefs.getString("user");
@@ -95,6 +95,7 @@ class _StoryDetailScreenState extends State<StoryDetailScreen> {
       });
     }
   }
+
   Future<void> _loadSaved() async {
     if (user == null) {
       setState(() {
@@ -110,20 +111,36 @@ class _StoryDetailScreenState extends State<StoryDetailScreen> {
       bookmarkLoading = false;
     });
   }
+
   Future<void> _loadStory() async {
     try {
       final data = await StoryFetcher().fetchStory(widget.storyId);
 
+      final chapters = data["chapters"] as List;
+
+      Map<int, List<dynamic>> temp = {};
+
+      for (var c in chapters) {
+        final num = c["chapterNumber"] ?? 0;
+
+        if (!temp.containsKey(num)) {
+          temp[num] = [];
+        }
+
+        temp[num]!.add(c);
+      }
+
       setState(() {
         story = data;
+        groupedChapters = temp;
         storyLoading = false;
       });
     } catch (e) {
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Lỗi tải truyện")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Lỗi tải truyện")));
     }
   }
 
@@ -133,132 +150,150 @@ class _StoryDetailScreenState extends State<StoryDetailScreen> {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
-    final chapters = story["chapters"] as List;
-
     return Scaffold(
       appBar: AppBar(
-          actions: [
-            IconButton(
-              icon: bookmarkLoading
-                  ? SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              )
-                  : Icon(
-                isSaved ? Icons.favorite : Icons.favorite_border,
-                color: isSaved ? Colors.red : null,
-              ),
-              onPressed: bookmarkLoading
-                  ? null
-                  : () async {
-                if (user == null) {
-                  _showLoginRequiredDialog();
-                  return;
-                }
+        title: Text(story["title"] ?? ""),
+        actions: [
+          IconButton(
+            icon: bookmarkLoading
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : Icon(
+                    isSaved ? Icons.favorite : Icons.favorite_border,
+                    color: isSaved ? Colors.red : null,
+                  ),
+            onPressed: bookmarkLoading
+                ? null
+                : () async {
+                    if (user == null) {
+                      _showLoginRequiredDialog();
+                      return;
+                    }
 
-                setState(() => bookmarkLoading = true);
+                    setState(() => bookmarkLoading = true);
 
-                if (isSaved) {
-                  await Bookmark().unsaveStory(user!.id, widget.storyId);
-                } else {
-                  await Bookmark().saveStory(user!.id, widget.storyId);
-                }
+                    if (isSaved) {
+                      await Bookmark().unsaveStory(user!.id, widget.storyId);
+                    } else {
+                      await Bookmark().saveStory(user!.id, widget.storyId);
+                    }
 
-                setState(() {
-                  isSaved = !isSaved;
-                  bookmarkLoading = false;
-                });
-              },
-            )
-          ],
-          title: Text(story["title"])),
+                    setState(() {
+                      isSaved = !isSaved;
+                      bookmarkLoading = false;
+                    });
+                  },
+          ),
+        ],
+      ),
+
       body: ListView(
         children: [
           const Divider(),
+
+          // ================= STORY HEADER =================
           Padding(
-            padding: EdgeInsets.all(16),
+            padding: const EdgeInsets.all(16),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 ClipRRect(
-                  borderRadius: BorderRadius.circular(5),
+                  borderRadius: BorderRadius.circular(6),
                   child: CachedNetworkImage(
                     imageUrl: baseCoverUrl + story['coverUrl'],
                     height: 180,
                     width: 120,
-                    fit: BoxFit.fill,
+                    fit: BoxFit.cover,
                   ),
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: 12),
+
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        story['title'],
-                        style: TextStyle(fontSize: 24),
-                        maxLines: 3,
-                        overflow: TextOverflow.ellipsis,
+                        story['title'] ?? "",
+                        style: const TextStyle(fontSize: 22),
                       ),
-                      Text(
-                        'Tác giả: ${story['author']}',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontStyle: FontStyle.italic,
-                        ),
-                        maxLines: 5,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      Text(
-                        'Đăng bởi: ${story['createdByName']}',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontStyle: FontStyle.italic,
-                        ),
-                        maxLines: 5,
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                      const SizedBox(height: 6),
+                      Text("Tác giả: ${story['author'] ?? ""}"),
+                      Text("Đăng bởi: ${story['createdByName'] ?? ""}"),
                     ],
                   ),
                 ),
               ],
             ),
           ),
+
+          // ================= DESCRIPTION =================
           Padding(
-            padding: EdgeInsets.all(16),
-            child: ExpandableText(text: story['description']),
+            padding: const EdgeInsets.all(16),
+            child: ExpandableText(text: story['description'] ?? ""),
           ),
-          Padding(
+
+          const Padding(
             padding: EdgeInsets.all(16),
             child: Text(
               "Danh sách chương",
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
           ),
 
-          ListView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: chapters.length,
-            itemBuilder: (context, i) {
-              final c = chapters[i];
-              return ListTile(
-                title: Text("Chương ${c["chapterNumber"]}: ${c["title"]}"),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => ChapterReaderScreen(
-                        chapterId: c["id"],
-                        storyId: widget.storyId,
-                      )
+          // ================= GROUPED CHAPTERS =================
+          ...groupedChapters.entries.map((entry) {
+            final chapterNumber = entry.key;
+            final chapters = entry.value;
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // HEADER
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                  child: Text(
+                    "Chương $chapterNumber",
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.blue,
                     ),
+                  ),
+                ),
+
+                // ITEMS
+                ...chapters.map((c) {
+                  return ListTile(
+                    title: Text(
+                      "${c["title"]}",
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    subtitle: Text(" - ${c["createdByName"]} (${c['createdById']})"),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => ChapterReaderScreen(
+                            chapterId: c["id"],
+                            storyId: widget.storyId,
+                            createdById: c["createdById"], //  PASS VÀO
+                          ),
+                        ),
+                      );
+                    },
                   );
-                },
-              );
-            },
-          ),
+                }),
+              ],
+            );
+          }),
+          const SizedBox(height: 20),
         ],
       ),
     );

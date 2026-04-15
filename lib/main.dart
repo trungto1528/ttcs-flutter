@@ -29,13 +29,13 @@ class _MyAppState extends State<MyApp> {
     _themeMode = widget.initialMode;
   }
 
-  Future<void> _loadTheme() async {
-    final prefs = await SharedPreferences.getInstance();
-    final index = prefs.getInt('themeMode') ?? 2;
-    setState(() {
-      _themeMode = AppThemeMode.values[index];
-    });
-  }
+  // Future<void> _loadTheme() async {
+  //   final prefs = await SharedPreferences.getInstance();
+  //   final index = prefs.getInt('themeMode') ?? 2;
+  //   setState(() {
+  //     _themeMode = AppThemeMode.values[index];
+  //   });
+  // }
 
   Future<void> _saveTheme(AppThemeMode mode) async {
     final prefs = await SharedPreferences.getInstance();
