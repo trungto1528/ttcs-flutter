@@ -9,10 +9,10 @@ val keystorePropertiesFile = rootProject.file("key.properties")
 val isLocalSigningReady = if (keystorePropertiesFile.exists()) {
     keystoreProperties.load(FileInputStream(keystorePropertiesFile))
     // Kiểm tra thêm xem các key cần thiết có đủ không
-    keystoreProperties.containsKey("keyAlias") &&
-            keystoreProperties.containsKey("keyPassword") &&
-            keystoreProperties.containsKey("storeFile") &&
-            keystoreProperties.containsKey("storePassword")
+    keystoreProperties.containsKey("keyAlias") && 
+    keystoreProperties.containsKey("keyPassword") &&
+    keystoreProperties.containsKey("storeFile") && 
+    keystoreProperties.containsKey("storePassword")
 } else {
     false
 }
@@ -67,7 +67,7 @@ android {
             } else {
                 null
             }
-
+            
             isMinifyEnabled = false
             isShrinkResources = false
         }
