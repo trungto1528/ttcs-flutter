@@ -40,7 +40,8 @@ class User {
       "displayName":displayName,
       "lastReadStoryId":lastReadStoryId,
       "lastReadChapterId":lastReadChapterId,
-      'lastReadCreatedById':lastReadCreatedById
+      'lastReadCreatedById':lastReadCreatedById,
+      'role': role
     };
   }
 }

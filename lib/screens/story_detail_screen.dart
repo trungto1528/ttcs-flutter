@@ -22,12 +22,15 @@ class StoryDetailScreen extends StatefulWidget {
 
 class _StoryDetailScreenState extends State<StoryDetailScreen> {
   late Map<String, dynamic> story;
+
   User? user;
+
   bool storyLoading = true;
   bool bookmarkLoading = false;
   bool isSaved = false;
-  Map<int, List<dynamic>> groupedChapters = {};
-  final baseUrl = "http://140.245.45.167:7777/api";
+
+  List chapters = [];
+
   final baseCoverUrl = 'http://140.245.45.167:7778/cover/';
 
   @override
@@ -46,12 +49,12 @@ class _StoryDetailScreenState extends State<StoryDetailScreen> {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        title: Text("Yêu cầu đăng nhập"),
-        content: Text("Bạn cần đăng nhập để lưu truyện"),
+        title: const Text("Yêu cầu đăng nhập"),
+        content: const Text("Bạn cần đăng nhập để lưu truyện"),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text("Đóng"),
+            child: const Text("Đóng"),
           ),
           TextButton(
             onPressed: () async {
@@ -65,7 +68,7 @@ class _StoryDetailScreenState extends State<StoryDetailScreen> {
                 await _loadSaved();
               }
             },
-            child: Text("Đăng nhập"),
+            child: const Text("Đăng nhập"),
           ),
         ],
       ),
@@ -77,30 +80,23 @@ class _StoryDetailScreenState extends State<StoryDetailScreen> {
     final userStr = prefs.getString("user");
 
     if (userStr == null) {
-      setState(() {
-        user = null;
-      });
+      setState(() => user = null);
       return;
     }
 
     try {
       final json = jsonDecode(userStr);
-
       setState(() {
         user = User.fromJson(json);
       });
-    } catch (e) {
-      setState(() {
-        user = null;
-      });
+    } catch (_) {
+      setState(() => user = null);
     }
   }
 
   Future<void> _loadSaved() async {
     if (user == null) {
-      setState(() {
-        isSaved = false;
-      });
+      setState(() => isSaved = false);
       return;
     }
 
@@ -116,38 +112,39 @@ class _StoryDetailScreenState extends State<StoryDetailScreen> {
     try {
       final data = await StoryFetcher().fetchStory(widget.storyId);
 
-      final chapters = data["chapters"] as List;
-
-      Map<int, List<dynamic>> temp = {};
-
-      for (var c in chapters) {
-        final num = c["chapterNumber"] ?? 0;
-
-        if (!temp.containsKey(num)) {
-          temp[num] = [];
-        }
-
-        temp[num]!.add(c);
-      }
-
       setState(() {
         story = data;
-        groupedChapters = temp;
+        chapters = data["chapters"] ?? [];
         storyLoading = false;
       });
     } catch (e) {
       if (!mounted) return;
-
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("Lỗi tải truyện")));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Lỗi tải truyện")),
+      );
     }
+  }
+
+  /// ================= GROUP CHAPTER =================
+  Map<int, List<dynamic>> get groupedChapters {
+    final Map<int, List<dynamic>> map = {};
+
+    for (var c in chapters) {
+      final key = c["chapterNumber"] ?? 0;
+      map.putIfAbsent(key, () => []);
+      map[key]!.add(c);
+    }
+
+    final sortedKeys = map.keys.toList()..sort();
+    return {for (var k in sortedKeys) k: map[k]!};
   }
 
   @override
   Widget build(BuildContext context) {
     if (storyLoading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
     }
 
     return Scaffold(
@@ -157,35 +154,35 @@ class _StoryDetailScreenState extends State<StoryDetailScreen> {
           IconButton(
             icon: bookmarkLoading
                 ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
                 : Icon(
-                    isSaved ? Icons.favorite : Icons.favorite_border,
-                    color: isSaved ? Colors.red : null,
-                  ),
+              isSaved ? Icons.favorite : Icons.favorite_border,
+              color: isSaved ? Colors.red : null,
+            ),
             onPressed: bookmarkLoading
                 ? null
                 : () async {
-                    if (user == null) {
-                      _showLoginRequiredDialog();
-                      return;
-                    }
+              if (user == null) {
+                _showLoginRequiredDialog();
+                return;
+              }
 
-                    setState(() => bookmarkLoading = true);
+              setState(() => bookmarkLoading = true);
 
-                    if (isSaved) {
-                      await Bookmark().unsaveStory(user!.id, widget.storyId);
-                    } else {
-                      await Bookmark().saveStory(user!.id, widget.storyId);
-                    }
+              if (isSaved) {
+                await Bookmark().unsaveStory(user!.id, widget.storyId);
+              } else {
+                await Bookmark().saveStory(user!.id, widget.storyId);
+              }
 
-                    setState(() {
-                      isSaved = !isSaved;
-                      bookmarkLoading = false;
-                    });
-                  },
+              setState(() {
+                isSaved = !isSaved;
+                bookmarkLoading = false;
+              });
+            },
           ),
         ],
       ),
@@ -203,7 +200,7 @@ class _StoryDetailScreenState extends State<StoryDetailScreen> {
                 ClipRRect(
                   borderRadius: BorderRadius.circular(6),
                   child: CachedNetworkImage(
-                    imageUrl: baseCoverUrl + story['coverUrl'],
+                    imageUrl: baseCoverUrl + (story['coverUrl'] ?? ""),
                     height: 180,
                     width: 120,
                     fit: BoxFit.cover,
@@ -239,24 +236,24 @@ class _StoryDetailScreenState extends State<StoryDetailScreen> {
             padding: EdgeInsets.all(16),
             child: Text(
               "Danh sách chương",
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
 
-          // ================= GROUPED CHAPTERS =================
+          // ================= GROUPED CHAPTER LIST =================
           ...groupedChapters.entries.map((entry) {
             final chapterNumber = entry.key;
-            final chapters = entry.value;
+            final list = entry.value;
 
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // HEADER
                 Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 8,
-                  ),
+                  padding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   child: Text(
                     "Chương $chapterNumber",
                     style: const TextStyle(
@@ -267,15 +264,16 @@ class _StoryDetailScreenState extends State<StoryDetailScreen> {
                   ),
                 ),
 
-                // ITEMS
-                ...chapters.map((c) {
+                ...list.map((c) {
                   return ListTile(
                     title: Text(
-                      "${c["title"]}",
+                      c["title"] ?? "",
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    subtitle: Text(" - ${c["createdByName"]} (${c['createdById']})"),
+                    subtitle: Text(
+                      " - ${c["createdByName"] ?? ""} (${c['createdById'] ?? ""})",
+                    ),
                     onTap: () {
                       Navigator.push(
                         context,
@@ -283,7 +281,7 @@ class _StoryDetailScreenState extends State<StoryDetailScreen> {
                           builder: (_) => ChapterReaderScreen(
                             chapterId: c["id"],
                             storyId: widget.storyId,
-                            createdById: c["createdById"], //  PASS VÀO
+                            createdById: c["createdById"],
                           ),
                         ),
                       );
@@ -293,6 +291,7 @@ class _StoryDetailScreenState extends State<StoryDetailScreen> {
               ],
             );
           }),
+
           const SizedBox(height: 20),
         ],
       ),

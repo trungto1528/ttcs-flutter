@@ -156,10 +156,10 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Future<void> _changeAvatar(
-    BuildContext context,
-    String username,
-    Function(String newUrl) _onUpdated,
-  ) async {
+      BuildContext context,
+      String username,
+      Function(String newUrl) _onUpdated,
+      ) async {
     final picker = ImagePicker();
     final pickedFile = await picker.pickImage(source: ImageSource.gallery);
     if (pickedFile == null) return;

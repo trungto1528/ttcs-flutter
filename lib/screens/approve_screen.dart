@@ -4,6 +4,7 @@ import '../services/chapter_fetcher.dart';
 
 class AdminApproveScreen extends StatefulWidget {
   final int adminId;
+
   const AdminApproveScreen({super.key, required this.adminId});
 
   @override
@@ -24,7 +25,6 @@ class _AdminApproveScreenState extends State<AdminApproveScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-
     _loadData();
   }
 
@@ -38,33 +38,69 @@ class _AdminApproveScreenState extends State<AdminApproveScreen>
   Future<void> _loadStories() async {
     setState(() => loadingStories = true);
 
-    final data = await StoryFetcher().getAllStories(widget.adminId);
+    try {
+      final data = await StoryFetcher().getAllStories(widget.adminId);
 
-    setState(() {
-      stories = data;
-      loadingStories = false;
-    });
+      setState(() {
+        stories = data ?? [];
+        loadingStories = false;
+      });
+    } catch (e) {
+      setState(() => loadingStories = false);
+    }
   }
 
   Future<void> _loadChapters() async {
     setState(() => loadingChapters = true);
 
-    final data = await ChapterFetcher().getMyChapter(widget.adminId);
+    try {
+      final data = await ChapterFetcher().getPendingChapters();
 
-    setState(() {
-      chapters = data;
-      loadingChapters = false;
-    });
+      setState(() {
+        chapters = data ?? [];
+        loadingChapters = false;
+      });
+    } catch (e) {
+      setState(() => loadingChapters = false);
+    }
   }
 
   Future<void> _approveStory(int id) async {
     await StoryFetcher().approveStory(widget.adminId, id);
-    _loadStories();
+    await _loadStories();
   }
 
   Future<void> _approveChapter(int id) async {
     await ChapterFetcher().approveChapter(widget.adminId, id);
-    _loadChapters();
+    await _loadChapters();
+  }
+
+  Color _statusColor(String? status) {
+    switch (status) {
+      case "APPROVED":
+        return Colors.green;
+      case "PENDING":
+        return Colors.orange;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  Widget _statusBadge(String status) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: _statusColor(status).withOpacity(0.15),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        status,
+        style: TextStyle(
+          color: _statusColor(status),
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
   }
 
   @override
@@ -83,22 +119,35 @@ class _AdminApproveScreenState extends State<AdminApproveScreen>
       body: TabBarView(
         controller: _tabController,
         children: [
+
           // ================= STORIES =================
           loadingStories
               ? const Center(child: CircularProgressIndicator())
+              : stories.isEmpty
+              ? const Center(child: Text("No stories"))
               : ListView.builder(
             itemCount: stories.length,
             itemBuilder: (context, i) {
               final s = stories[i];
+              final status = s["status"] ?? "UNKNOWN";
 
               return Card(
                 margin: const EdgeInsets.all(8),
                 child: ListTile(
-                  title: Text(s["title"] ?? ""),
-                  subtitle: Text("Status: ${s["status"]}"),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.check_circle, color: Colors.green),
+                  title: Text(s["title"] ?? "No title"),
+                  subtitle: _statusBadge(status),
+
+                  trailing: status == "PENDING"
+                      ? IconButton(
+                    icon: const Icon(
+                      Icons.check_circle,
+                      color: Colors.green,
+                    ),
                     onPressed: () => _approveStory(s["id"]),
+                  )
+                      : const Icon(
+                    Icons.verified,
+                    color: Colors.grey,
                   ),
                 ),
               );
@@ -108,19 +157,39 @@ class _AdminApproveScreenState extends State<AdminApproveScreen>
           // ================= CHAPTERS =================
           loadingChapters
               ? const Center(child: CircularProgressIndicator())
+              : chapters.isEmpty
+              ? const Center(child: Text("No pending chapters"))
               : ListView.builder(
             itemCount: chapters.length,
             itemBuilder: (context, i) {
               final c = chapters[i];
+              final status = c["status"] ?? "UNKNOWN";
 
               return Card(
                 margin: const EdgeInsets.all(8),
                 child: ListTile(
-                  title: Text("Chap ${c["chapterNumber"]}: ${c["title"]}"),
-                  subtitle: Text("Status: ${c["status"]}"),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.check_circle, color: Colors.green),
+                  title: Text(
+                    "Chap ${c["chapterNumber"] ?? ""}: ${c["title"] ?? ""}",
+                  ),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text("Story: ${c["storyTitle"] ?? ""}"),
+                      _statusBadge(status),
+                    ],
+                  ),
+
+                  trailing: status == "PENDING"
+                      ? IconButton(
+                    icon: const Icon(
+                      Icons.check_circle,
+                      color: Colors.green,
+                    ),
                     onPressed: () => _approveChapter(c["id"]),
+                  )
+                      : const Icon(
+                    Icons.verified,
+                    color: Colors.grey,
                   ),
                 ),
               );

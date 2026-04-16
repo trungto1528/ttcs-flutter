@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:novel_app/screens/story_detail_screen.dart';
-import 'package:novel_app/services/chapter_fetcher.dart';
+import '../services/chapter_fetcher.dart';
 
 class MyStoriesScreen extends StatefulWidget {
   final int userId;
@@ -34,31 +34,16 @@ class _MyStoriesScreenState extends State<MyStoriesScreen> {
     }
   }
 
-  Map<int, List<dynamic>> groupByStory(List data) {
-    final Map<int, List<dynamic>> grouped = {};
-
-    for (var item in data) {
-      final storyId = item['storyId'];
-
-      if (!grouped.containsKey(storyId)) {
-        grouped[storyId] = [];
-      }
-
-      grouped[storyId]!.add(item);
-    }
-
-    return grouped;
-  }
-
   Future<void> _loadStories() async {
     try {
       final data = await ChapterFetcher().getMyChapter(widget.userId);
+
       setState(() {
-        stories = data;
+        stories = data ?? [];
         isLoading = false;
       });
     } catch (e) {
-      print(e);
+      debugPrint(e.toString());
       setState(() => isLoading = false);
     }
   }
@@ -66,61 +51,71 @@ class _MyStoriesScreenState extends State<MyStoriesScreen> {
   @override
   Widget build(BuildContext context) {
     if (isLoading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text("Truyện của tôi"),
+          automaticallyImplyLeading: true,
+          leading: Navigator.canPop(context)
+              ? IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () => Navigator.pop(context),
+          )
+              : null,
+        ),
+        body: const Center(child: CircularProgressIndicator()),
+      );
     }
 
     if (stories.isEmpty) {
       return Scaffold(
         appBar: AppBar(
           title: const Text("Truyện của tôi"),
-          leading: IconButton(
+          automaticallyImplyLeading: true,
+          leading: Navigator.canPop(context)
+              ? IconButton(
             icon: const Icon(Icons.arrow_back),
-            onPressed: () {
-              Navigator.pop(context);
-            },
-          ),
+            onPressed: () => Navigator.pop(context),
+          )
+              : null,
         ),
-        body: Center(child: Text("Chưa có truyện nào")),
+        body: const Center(child: Text("Chưa có truyện nào")),
       );
     }
-
-    final grouped = groupByStory(stories);
-    final storyIds = grouped.keys.toList();
 
     return Scaffold(
       appBar: AppBar(
         title: const Text("Truyện của tôi"),
-        leading: IconButton(
+        automaticallyImplyLeading: true,
+        leading: Navigator.canPop(context)
+            ? IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () {
-            Navigator.pop(context);
-          },
-        ),
+          onPressed: () => Navigator.pop(context),
+        )
+            : null,
       ),
       body: ListView.builder(
-        itemCount: storyIds.length,
+        itemCount: stories.length,
         itemBuilder: (context, index) {
-          final storyId = storyIds[index];
-          final chapters = grouped[storyId]!;
+          final story = stories[index];
 
-          final storyTitle = chapters.first['storyTitle'];
-          final coverUrl = chapters.first['storyCoverUrl'];
+          final List chapters =
+              (story['chapters'] as List?)?.toList() ?? [];
 
-          // sort chapter
-          chapters.sort(
-            (a, b) => a['chapterNumber'].compareTo(b['chapterNumber']),
-          );
+          // SORT chapter theo chapterNumber
+          chapters.sort((a, b) =>
+              (a['chapterNumber'] ?? 0).compareTo(b['chapterNumber'] ?? 0));
 
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // HEADER STORY
+              // ================= STORY HEADER =================
               InkWell(
                 onTap: () {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => StoryDetailScreen(storyId: storyId),
+                      builder: (_) =>
+                          StoryDetailScreen(storyId: story['storyId']),
                     ),
                   );
                 },
@@ -131,12 +126,12 @@ class _MyStoriesScreenState extends State<MyStoriesScreen> {
                       ClipRRect(
                         borderRadius: BorderRadius.circular(8),
                         child: Image.network(
-                          baseCoverUrl + (coverUrl ?? ""),
+                          baseCoverUrl + (story['coverUrl'] ?? ""),
                           width: 70,
                           height: 105,
                           fit: BoxFit.cover,
                           errorBuilder: (_, __, ___) =>
-                              const Icon(Icons.book, size: 70),
+                          const Icon(Icons.book, size: 70),
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -146,45 +141,31 @@ class _MyStoriesScreenState extends State<MyStoriesScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              storyTitle ?? "Không có tên",
+                              story['title'] ?? "Không có tên",
                               style: const TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
-
                             const SizedBox(height: 4),
-
-                            Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 6,
-                                    vertical: 2,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: _getStatusColor(
-                                      chapters.first['storyStatus'] ??
-                                          chapters.first['status'],
-                                    ).withOpacity(0.15),
-                                    borderRadius: BorderRadius.circular(6),
-                                  ),
-                                  child: Text(
-                                    (chapters.first['storyStatus'] ??
-                                            chapters.first['status'] ??
-                                            "UNKNOWN")
-                                        .toString(),
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      color: _getStatusColor(
-                                        chapters.first['storyStatus'] ??
-                                            chapters.first['status'],
-                                      ),
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: _getStatusColor(story['status'])
+                                    .withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                (story['status'] ?? "UNKNOWN").toString(),
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: _getStatusColor(story['status']),
+                                  fontWeight: FontWeight.bold,
                                 ),
-                              ],
+                              ),
                             ),
                           ],
                         ),
@@ -194,7 +175,7 @@ class _MyStoriesScreenState extends State<MyStoriesScreen> {
                 ),
               ),
 
-              //  LIST CHAPTER
+              // ================= CHAPTER LIST =================
               ...chapters.map((c) {
                 return Padding(
                   padding: const EdgeInsets.only(left: 90, bottom: 4),
@@ -203,8 +184,9 @@ class _MyStoriesScreenState extends State<MyStoriesScreen> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) =>
-                              StoryDetailScreen(storyId: c['storyId']),
+                          builder: (_) => StoryDetailScreen(
+                            storyId: story['storyId'],
+                          ),
                         ),
                       );
                     },
@@ -218,18 +200,15 @@ class _MyStoriesScreenState extends State<MyStoriesScreen> {
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
-
                         const SizedBox(width: 6),
-
                         Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 6,
                             vertical: 2,
                           ),
                           decoration: BoxDecoration(
-                            color: _getStatusColor(
-                              c['status'],
-                            ).withOpacity(0.15),
+                            color: _getStatusColor(c['status'])
+                                .withOpacity(0.15),
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: Text(
@@ -246,6 +225,7 @@ class _MyStoriesScreenState extends State<MyStoriesScreen> {
                   ),
                 );
               }),
+
               const Divider(),
             ],
           );

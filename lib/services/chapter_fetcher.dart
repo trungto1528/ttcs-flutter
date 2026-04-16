@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+
 import 'package:http/http.dart' as http;
 
 class ChapterFetcher {
@@ -17,19 +18,7 @@ class ChapterFetcher {
       throw Exception("Failed to fetch");
     }
   }
-  Future<List<dynamic>> getMyChapter(int userId) async {
-    final res = await http.get(
-      Uri.parse("$baseUrl/chapters/my-chapters"),
-      headers: {
-        "userId": userId.toString(),
-      },
-    );
-    if (res.statusCode == 200) {
-      return jsonDecode(res.body);
-    } else {
-      throw Exception("Failed to load chapters");
-    }
-  }
+
   Future approveChapter(int adminId, int chapterId) async {
     await http.put(
       Uri.parse("$baseUrl/chapters/$chapterId/approve"),
@@ -70,10 +59,7 @@ class ChapterFetcher {
         'POST',
         Uri.parse("$baseUrl/illus/upload"),
       );
-      request.files.add(await http.MultipartFile.fromPath(
-        'file',
-        file.path,
-      ));
+      request.files.add(await http.MultipartFile.fromPath('file', file.path));
       var response = await request.send();
       if (response.statusCode == 200) {
         return await response.stream.bytesToString();
@@ -83,4 +69,22 @@ class ChapterFetcher {
     }
     return null;
   }
+
+  Future<List> getPendingChapters() async {
+    final res = await http.get(Uri.parse("$baseUrl/chapters/pending"));
+
+    return jsonDecode(res.body);
+  }
+  Future<List<dynamic>> getMyChapter(int userId) async {
+    final res = await http.get(
+      Uri.parse("$baseUrl/chapters/my-chapters?userId=$userId"),
+    );
+
+    if (res.statusCode == 200) {
+      return jsonDecode(res.body);
+    } else {
+      throw Exception("Failed to load chapters");
+    }
+  }
+
 }
