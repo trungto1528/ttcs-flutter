@@ -30,10 +30,7 @@ jobs:
 
       # 4️⃣ Build APK release (Hiện tại tạo ra app-release.apk chưa ký chính thức)
       - name: Build APK
-        run: |
-          VERSION=$(grep version pubspec.yaml | head -1 | awk '{print $2}' | cut -d+ -f1)
-
-          flutter build apk --release --build-name=$VERSION --build-number=${GITHUB_RUN_NUMBER}
+        run: flutter build apk --release  --build-number=${GITHUB_RUN_NUMBER}
 
       # ⚠️ BƯỚC MỚI: Sign APK với Keystore từ Secrets
       - name: Sign APK
