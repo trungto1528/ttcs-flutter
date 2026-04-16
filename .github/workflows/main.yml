@@ -25,10 +25,15 @@ jobs:
       # 3️⃣ Install dependencies
       - name: Install dependencies
         run: flutter pub get
+      - name: Set build number
+        run: echo "BUILD_NUMBER=${GITHUB_RUN_NUMBER}" >> $GITHUB_ENV
 
       # 4️⃣ Build APK release (Hiện tại tạo ra app-release.apk chưa ký chính thức)
       - name: Build APK
-        run: flutter build apk --release
+        run: |
+          VERSION=$(grep version pubspec.yaml | head -1 | awk '{print $2}' | cut -d+ -f1)
+
+          flutter build apk --release --build-name=$VERSION --build-number=${GITHUB_RUN_NUMBER}
 
       # ⚠️ BƯỚC MỚI: Sign APK với Keystore từ Secrets
       - name: Sign APK
@@ -51,18 +56,12 @@ jobs:
           echo "MAIN_VERSION=$MAIN_VERSION" >> $GITHUB_ENV
           echo "Main version: $MAIN_VERSION"
 
-      # 6️⃣ Tạo timestamp cho tag
-      - name: Generate timestamp
-        run: |
-          TIMESTAMP=$(date -u +'%Y_%m_%d_%H_%M_UTC')
-          echo "TIMESTAMP=$TIMESTAMP" >> $GITHUB_ENV
-
       # 7️⃣ Tạo Release + tag tự động, upload APK ĐÃ KÝ
       - name: Create GitHub Release with tag
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: "v${{ env.MAIN_VERSION }}-${{ env.TIMESTAMP }}"
-          name: "v${{ env.MAIN_VERSION }}-${{ env.TIMESTAMP }}"
+          tag_name: "v${{ env.MAIN_VERSION }}+${{ github.run_number }}"
+          name: "v${{ env.MAIN_VERSION }}+${{ github.run_number }}"
           body: "Commit message: ${{ github.event.head_commit.message }}"
           # Quan trọng: Sử dụng output từ bước Sign thay vì đường dẫn cứng
           files: ${{ steps.sign_app.outputs.signedReleaseFile }}
