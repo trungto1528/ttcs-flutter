@@ -45,7 +45,6 @@ dependencies:
   image: 3.2.2
   uuid: ^3.0.7
   dio: ^5.4.0
-  install_plugin: ^2.1.0
   path_provider: ^2.1.2
   open_file: ^3.5.11
 dev_dependencies:
