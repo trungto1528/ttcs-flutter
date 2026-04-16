@@ -48,13 +48,63 @@ class _MyStoriesScreenState extends State<MyStoriesScreen> {
     }
   }
 
+  // ================= DELETE =================
+
+  void _confirmDelete(int chapterId) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text("Xoá chương"),
+        content: const Text("Bạn có chắc muốn xoá chương này?"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Huỷ"),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await _deleteChapter(chapterId);
+            },
+            child: const Text(
+              "Xoá",
+              style: TextStyle(color: Colors.red),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _deleteChapter(int chapterId) async {
+    try {
+      await ChapterFetcher().deleteChapter(chapterId, widget.userId);
+
+      //   cập nhật UI ngay (không cần reload)
+      setState(() {
+        for (var story in stories) {
+          story['chapters']?.removeWhere((c) => c['id'] == chapterId);
+        }
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Đã xoá chương")),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Xoá thất bại")),
+      );
+    }
+  }
+
+  // ================= UI =================
+
   @override
   Widget build(BuildContext context) {
     if (isLoading) {
       return Scaffold(
         appBar: AppBar(
           title: const Text("Truyện của tôi"),
-          automaticallyImplyLeading: true,
           leading: Navigator.canPop(context)
               ? IconButton(
             icon: const Icon(Icons.arrow_back),
@@ -70,7 +120,6 @@ class _MyStoriesScreenState extends State<MyStoriesScreen> {
       return Scaffold(
         appBar: AppBar(
           title: const Text("Truyện của tôi"),
-          automaticallyImplyLeading: true,
           leading: Navigator.canPop(context)
               ? IconButton(
             icon: const Icon(Icons.arrow_back),
@@ -85,7 +134,6 @@ class _MyStoriesScreenState extends State<MyStoriesScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text("Truyện của tôi"),
-        automaticallyImplyLeading: true,
         leading: Navigator.canPop(context)
             ? IconButton(
           icon: const Icon(Icons.arrow_back),
@@ -101,14 +149,13 @@ class _MyStoriesScreenState extends State<MyStoriesScreen> {
           final List chapters =
               (story['chapters'] as List?)?.toList() ?? [];
 
-          // SORT chapter theo chapterNumber
           chapters.sort((a, b) =>
               (a['chapterNumber'] ?? 0).compareTo(b['chapterNumber'] ?? 0));
 
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ================= STORY HEADER =================
+              // ================= STORY =================
               InkWell(
                 onTap: () {
                   Navigator.push(
@@ -135,7 +182,6 @@ class _MyStoriesScreenState extends State<MyStoriesScreen> {
                         ),
                       ),
                       const SizedBox(width: 12),
-
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -175,24 +221,24 @@ class _MyStoriesScreenState extends State<MyStoriesScreen> {
                 ),
               ),
 
-              // ================= CHAPTER LIST =================
+              // ================= CHAPTER =================
               ...chapters.map((c) {
                 return Padding(
                   padding: const EdgeInsets.only(left: 90, bottom: 4),
-                  child: InkWell(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => StoryDetailScreen(
-                            storyId: story['storyId'],
-                          ),
-                        ),
-                      );
-                    },
-                    child: Row(
-                      children: [
-                        Expanded(
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: InkWell(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => StoryDetailScreen(
+                                  storyId: story['storyId'],
+                                ),
+                              ),
+                            );
+                          },
                           child: Text(
                             "Chap ${c['chapterNumber']}: ${c['title']}",
                             style: const TextStyle(fontSize: 13),
@@ -200,32 +246,38 @@ class _MyStoriesScreenState extends State<MyStoriesScreen> {
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        const SizedBox(width: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: _getStatusColor(c['status'])
-                                .withOpacity(0.15),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            (c['status'] ?? "UNKNOWN").toString(),
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: _getStatusColor(c['status']),
-                              fontWeight: FontWeight.bold,
-                            ),
+                      ),
+
+                      //  NÚT XOÁ
+                      IconButton(
+                        icon: const Icon(Icons.delete,
+                            size: 18, color: Colors.red),
+                        onPressed: () => _confirmDelete(c['id']),
+                      ),
+
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: _getStatusColor(c['status'])
+                              .withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          (c['status'] ?? "UNKNOWN").toString(),
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: _getStatusColor(c['status']),
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 );
               }),
-
               const Divider(),
             ],
           );

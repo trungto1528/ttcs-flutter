@@ -1,21 +1,24 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:crop_your_image/crop_your_image.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
-import 'package:novel_app/screens/login_screen.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/User.dart';
 import '../models/app_theme_mode.dart';
 import '../services/auth.dart';
-import 'approve_screen.dart';
+import '../services/ota.dart';
+
+import 'admin_management.dart';
 import 'change_password.dart';
 import 'create_chapter_screen.dart';
 import 'create_story_screen.dart';
+import 'login_screen.dart';
 import 'my_stories.dart';
 
 class ProfilePage extends StatefulWidget {
@@ -32,57 +35,10 @@ class ProfilePage extends StatefulWidget {
   State<ProfilePage> createState() => _ProfilePageState();
 }
 
-class _EditDisplayNameDialog extends StatefulWidget {
-  final String currentName;
-
-  const _EditDisplayNameDialog({required this.currentName});
-
-  @override
-  State<_EditDisplayNameDialog> createState() => _EditDisplayNameDialogState();
-}
-
-class _EditDisplayNameDialogState extends State<_EditDisplayNameDialog> {
-  late TextEditingController controller;
-
-  @override
-  void initState() {
-    super.initState();
-    controller = TextEditingController(text: widget.currentName);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text("Đổi tên hiển thị"),
-      content: TextField(
-        controller: controller,
-        decoration: const InputDecoration(labelText: "Tên hiển thị"),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context), // huỷ
-          child: const Text("Huỷ"),
-        ),
-        ElevatedButton(
-          onPressed: () => Navigator.pop(context, controller.text), // lưu
-          child: const Text("Lưu"),
-        ),
-      ],
-    );
-  }
-}
-
 class _ProfilePageState extends State<ProfilePage> {
   User? user;
-  final baseAvatar = "http://140.245.45.167:7778/avatar";
 
-  void logout() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove("user");
-    setState(() {
-      user = null;
-    });
-  }
+  final baseAvatar = "http://140.245.45.167:7778/avatar";
 
   @override
   void initState() {
@@ -101,6 +57,12 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
+  Future<void> logout() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove("user");
+    setState(() => user = null);
+  }
+
   Future<void> _goLogin() async {
     final result = await Navigator.push(
       context,
@@ -115,115 +77,123 @@ class _ProfilePageState extends State<ProfilePage> {
   void _openSettings() {
     showModalBottomSheet(
       context: context,
-      builder: (_) {
-        return Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                "Giao diện",
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 10),
-
-              RadioGroup<AppThemeMode>(
-                groupValue: widget.currentMode,
-                onChanged: (value) {
-                  if (value != null) {
-                    widget.onThemeChanged(value);
-                  }
-                },
-                child: Column(
-                  children: const [
-                    RadioListTile(
-                      value: AppThemeMode.light,
-                      title: Text("Sáng"),
-                    ),
-                    RadioListTile(value: AppThemeMode.dark, title: Text("Tối")),
-                    RadioListTile(
-                      value: AppThemeMode.system,
-                      title: Text("Theo hệ thống"),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+      builder: (_) => Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const SizedBox(height: 10),
+          const Text("Giao diện",
+              style: TextStyle(fontWeight: FontWeight.bold)),
+          RadioGroup<AppThemeMode>(
+            groupValue: widget.currentMode,
+            onChanged: (value) {
+              if (value != null) widget.onThemeChanged(value);
+            },
+            child: const Column(
+              children: [
+                RadioListTile(value: AppThemeMode.light, title: Text("Sáng")),
+                RadioListTile(value: AppThemeMode.dark, title: Text("Tối")),
+                RadioListTile(
+                    value: AppThemeMode.system,
+                    title: Text("Theo hệ thống")),
+              ],
+            ),
           ),
-        );
-      },
+        ],
+      ),
     );
   }
 
-  Future<void> _changeAvatar(
-      BuildContext context,
-      String username,
-      Function(String newUrl) _onUpdated,
-      ) async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
-    if (pickedFile == null) return;
+  Future<void> _checkUpdate() async {
+    await OtaService().checkAndUpdate(context);
+  }
 
-    final imageBytes = await pickedFile.readAsBytes();
-    final cropController = CropController();
+  Future<void> _changeName() async {
+    if (user == null) return;
+
+    final controller = TextEditingController(text: user!.displayName);
+
+    final newName = await showDialog<String>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text("Đổi tên"),
+        content: TextField(controller: controller),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Huỷ")),
+          ElevatedButton(
+              onPressed: () => Navigator.pop(context, controller.text),
+              child: const Text("Lưu")),
+        ],
+      ),
+    );
+
+    if (newName != null && newName.isNotEmpty) {
+      final res = await Auth().updateDisplayName(user!.id, newName);
+
+      if (res == "OK") {
+        setState(() => user!.displayName = newName);
+
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString("user", jsonEncode(user!.toJson()));
+      }
+    }
+  }
+
+  Future<void> _changeAvatar() async {
+    if (user == null) return;
+
+    final picked =
+    await ImagePicker().pickImage(source: ImageSource.gallery);
+    if (picked == null) return;
+
+    final bytes = await picked.readAsBytes();
+    final controller = CropController();
 
     await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => Scaffold(
           appBar: AppBar(
-            title: const Text("Chỉnh avatar"),
+            title: const Text("Cắt ảnh"),
             actions: [
               IconButton(
                 icon: const Icon(Icons.check),
-                onPressed: () {
-                  cropController.crop();
-                },
-              ),
+                onPressed: () => controller.crop(),
+              )
             ],
           ),
           body: Crop(
-            controller: cropController,
-            image: imageBytes,
+            controller: controller,
+            image: bytes,
             aspectRatio: 1,
             withCircleUi: true,
-            onCropped: (croppedData) async {
+            onCropped: (data) async {
               Navigator.pop(context);
 
-              final tempDir = await getTemporaryDirectory();
-              final tempFile = File('${tempDir.path}/avatar.png');
-              await tempFile.writeAsBytes(croppedData);
+              final dir = await getTemporaryDirectory();
+              final file = File("${dir.path}/avatar.png");
+              await file.writeAsBytes(data);
 
-              try {
-                var request = http.MultipartRequest(
-                  'POST',
-                  Uri.parse(
-                    "http://140.245.45.167:7777/api/users/upload-avatar",
-                  ),
-                );
-                request.fields['username'] = username;
-                request.files.add(
-                  await http.MultipartFile.fromPath('file', tempFile.path),
-                );
+              var request = http.MultipartRequest(
+                'POST',
+                Uri.parse(
+                    "http://140.245.45.167:7777/api/users/upload-avatar"),
+              );
 
-                var response = await request.send();
+              request.fields['username'] = user!.username;
+              request.files
+                  .add(await http.MultipartFile.fromPath('file', file.path));
 
-                if (response.statusCode == 200) {
-                  final resBody = await response.stream.bytesToString();
-                  _onUpdated(resBody);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("Đổi avatar thành công")),
-                  );
-                  _loadUser();
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("Upload thất bại")),
-                  );
-                }
-              } finally {
-                if (await tempFile.exists()) {
-                  await tempFile.delete();
-                }
+              final res = await request.send();
+
+              if (res.statusCode == 200) {
+                final body = await res.stream.bytesToString();
+
+                setState(() => user!.avatarUrl = body);
+
+                final prefs = await SharedPreferences.getInstance();
+                await prefs.setString("user", jsonEncode(user!.toJson()));
               }
             },
           ),
@@ -232,17 +202,30 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
+  Widget _tile(IconData icon, String title, VoidCallback onTap) {
+    return ListTile(
+      leading: Icon(icon),
+      title: Text(title),
+      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      tileColor: Theme.of(context).cardColor,
+      onTap: onTap,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        title: const Text("Tài khoản"),
         actions: [
           IconButton(
             icon: const Icon(Icons.settings),
             onPressed: _openSettings,
-          ),
+          )
         ],
-        title: const Text("Tài khoản"),
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
@@ -250,194 +233,72 @@ class _ProfilePageState extends State<ProfilePage> {
           if (user == null) ...[
             const Icon(Icons.person, size: 80),
             const SizedBox(height: 10),
-            const Text("Chưa đăng nhập", textAlign: TextAlign.center),
-            const SizedBox(height: 10),
-            ElevatedButton(onPressed: _goLogin, child: const Text("Đăng nhập")),
+            ElevatedButton(
+                onPressed: _goLogin, child: const Text("Đăng nhập")),
           ] else ...[
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              child: Center(
-                child: SizedBox(
-                  width: 100,
-                  height: 100,
-                  child: ClipOval(
-                    child: Image.network(
-                      "$baseAvatar${user!.avatarUrl}?t=${DateTime.now().millisecondsSinceEpoch}",
-                      key: UniqueKey(),
-                      fit: BoxFit.cover,
-                      loadingBuilder: (context, child, loadingProgress) {
-                        if (loadingProgress == null) return child;
-                        return const Center(child: CircularProgressIndicator());
-                      },
-                      errorBuilder: (context, error, stackTrace) {
-                        return const Icon(Icons.error);
-                      },
-                    ),
+            Center(
+              child: GestureDetector(
+                onTap: _changeAvatar,
+                child: ClipOval(
+                  child: CachedNetworkImage(
+                    imageUrl: "$baseAvatar${user!.avatarUrl}",
+                    width: 100,
+                    height: 100,
+                    fit: BoxFit.cover,
                   ),
                 ),
               ),
             ),
+
             const SizedBox(height: 10),
-            Center(
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    user!.displayName,
+
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(user!.displayName,
                     style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  InkWell(
-                    onTap: () async {
-                      final newName = await showDialog<String>(
-                        context: context,
-                        builder: (context) => _EditDisplayNameDialog(
-                          currentName: user!.displayName,
-                        ),
-                      );
-                      if (newName != null && newName.isNotEmpty) {
-                        final result = await Auth().updateDisplayName(
-                          user!.id,
-                          newName,
-                        );
-                        if (result == "OK") {
-                          setState(() {
-                            user!.displayName = newName;
-                          });
-                        } else {
-                          ScaffoldMessenger.of(
-                            context,
-                          ).showSnackBar(SnackBar(content: Text(result)));
-                        }
-                      }
-                    },
-                    child: const Icon(Icons.edit, size: 20),
-                  ),
-                ],
-              ),
+                        fontSize: 18, fontWeight: FontWeight.bold)),
+                IconButton(
+                    icon: const Icon(Icons.edit, size: 18),
+                    onPressed: _changeName),
+              ],
             ),
 
             const SizedBox(height: 20),
-            ListTile(
-              leading: const Icon(Icons.add_box_outlined),
-              title: const Text("Đăng truyện mới"),
-              trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              tileColor: Theme.of(context).cardColor,
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const CreateStoryScreen()),
-                );
-              },
-            ),
-            const SizedBox(height: 10),
-            ListTile(
-              leading: const Icon(Icons.post_add_outlined),
-              title: const Text("Đăng chương mới"),
-              trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              tileColor: Theme.of(context).cardColor,
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const CreateChapterScreen(),
-                  ),
-                );
-              },
-            ),
-            const SizedBox(height: 10),
-            ListTile(
-              leading: const Icon(Icons.menu_book),
-              title: const Text("Truyện của tôi"),
-              trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              tileColor: Theme.of(context).cardColor,
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => MyStoriesScreen(userId: user!.id),
-                  ),
-                );
-              },
-            ),
-            if (user != null && user!.role == "ADMIN") ...[
-              const SizedBox(height: 10),
 
-              ListTile(
-                leading: const Icon(Icons.fact_check),
-                title: const Text("Duyệt truyện"),
-                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                tileColor: Theme.of(context).cardColor,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                onTap: () {
-                  Navigator.push(
+            _tile(Icons.add_box, "Đăng truyện",
+                    () => Navigator.push(context,
+                    MaterialPageRoute(builder: (_) => const CreateStoryScreen()))),
+
+            _tile(Icons.post_add, "Đăng chương",
+                    () => Navigator.push(context,
+                    MaterialPageRoute(builder: (_) => const CreateChapterScreen()))),
+
+            _tile(Icons.menu_book, "Truyện của tôi",
+                    () => Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => AdminApproveScreen(adminId:user!.id),
-                    ),
-                  );
-                },
-              ),
-            ],
-            const SizedBox(height: 10),
-            ListTile(
-              leading: const Icon(Icons.lock_outline),
-              title: const Text("Đổi mật khẩu"),
-              trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              tileColor: Theme.of(context).cardColor,
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) =>
-                        ChangePasswordScreen(username: user!.username),
-                  ),
-                );
-              },
-            ),
+                        builder: (_) => MyStoriesScreen(userId: user!.id)))),
 
-            const SizedBox(height: 10),
-            ListTile(
-              leading: const Icon(Icons.image_outlined),
-              title: const Text("Đổi avatar"),
-              trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              tileColor: Theme.of(context).cardColor,
-              onTap: () {
-                _changeAvatar(context, user!.username, (newUrl) async {
-                  setState(() {
-                    user!.avatarUrl = newUrl;
-                  });
-                  final prefs = await SharedPreferences.getInstance();
-                  await prefs.setString("user", jsonEncode(user!.toJson()));
-                });
-              },
-            ),
+            if (user!.role == "ADMIN")
+              _tile(Icons.admin_panel_settings, "Quản lý truyện",
+                      () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) =>
+                              AdminStoryManagerScreen(adminId: user!.id)))),
 
-            const SizedBox(height: 20),
+            _tile(Icons.lock, "Đổi mật khẩu",
+                    () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) =>
+                            ChangePasswordScreen(username: user!.username)))),
 
-            ElevatedButton(onPressed: logout, child: const Text("Đăng xuất")),
-          ],
-          const SizedBox(height: 30),
+            _tile(Icons.system_update, "Kiểm tra cập nhật", _checkUpdate),
+
+            _tile(Icons.logout, "Đăng xuất", logout),
+          ]
         ],
       ),
     );
