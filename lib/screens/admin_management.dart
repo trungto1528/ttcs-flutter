@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+
 import '../services/story_fetcher.dart';
 import '../services/chapter_fetcher.dart';
 
@@ -17,6 +19,8 @@ class _AdminStoryManagerScreenState
   List stories = [];
   Map<int, List> storyChapters = {};
   bool isLoading = true;
+
+  final baseCoverUrl = "http://140.245.45.167:7778/cover/";
 
   @override
   void initState() {
@@ -106,20 +110,66 @@ class _AdminStoryManagerScreenState
                 borderRadius: BorderRadius.circular(12),
               ),
               child: ExpansionTile(
-                tilePadding: const EdgeInsets.symmetric(
-                    horizontal: 12, vertical: 4),
+                tilePadding: const EdgeInsets.all(10),
 
-                title: Text(
-                  story['title'],
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+                // ================= HEADER =================
+                title: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: CachedNetworkImage(
+                        width: 60,
+                        height: 90,
+                        fit: BoxFit.cover,
+                        imageUrl:
+                        "$baseCoverUrl${story['coverUrl']}",
+                        placeholder: (_, __) => const SizedBox(
+                          width: 60,
+                          height: 90,
+                          child: Center(
+                            child: CircularProgressIndicator(
+                                strokeWidth: 2),
+                          ),
+                        ),
+                        errorWidget: (_, __, ___) =>
+                        const Icon(Icons.image, size: 60),
+                      ),
+                    ),
 
-                // ✅ STATUS FIX KHÔNG KÉO
-                subtitle: Align(
-                  alignment: Alignment.centerLeft,
-                  child: buildStatusChip(story['status']),
+                    const SizedBox(width: 12),
+
+                    // INFO
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment:
+                        CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            story['title'],
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+
+                          Text(
+                            "Tác giả: ${story['author'] ?? "Unknown"}",
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey.shade600,
+                            ),
+                          ),
+
+                          const SizedBox(height: 6),
+
+                          buildStatusChip(story['status']),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
 
                 onExpansionChanged: (expanded) {
@@ -182,7 +232,7 @@ class _AdminStoryManagerScreenState
       return const [
         Padding(
           padding: EdgeInsets.all(10),
-          child: Text("Chưa có chương"),
+          child: Text("Chưa có chương nào"),
         )
       ];
     }
@@ -191,18 +241,18 @@ class _AdminStoryManagerScreenState
       final status = c['status'];
 
       return Container(
-        margin: const EdgeInsets.symmetric(
-            horizontal: 10, vertical: 4),
+        margin:
+        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(8),
           color: Colors.grey.withValues(alpha: 0.05),
         ),
         child: ListTile(
           title: Text(
-            "Chap ${c['chapterNumber']}",
+            "Chương ${c['chapterNumber']}: ${c['title']}",
             style: const TextStyle(fontWeight: FontWeight.w500),
           ),
-          subtitle: Text(c['title'] ?? ""),
+          subtitle: Text(c['createdByName'] ?? ""),
           trailing: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -242,28 +292,13 @@ class _AdminStoryManagerScreenState
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: color),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            status == "APPROVED"
-                ? Icons.check_circle
-                : status == "PENDING"
-                ? Icons.schedule
-                : Icons.cancel,
-            size: 12,
-            color: color,
-          ),
-          const SizedBox(width: 4),
-          Text(
-            status,
-            style: TextStyle(
-              color: color,
-              fontWeight: FontWeight.bold,
-              fontSize: 11,
-            ),
-          ),
-        ],
+      child: Text(
+        status,
+        style: TextStyle(
+          color: color,
+          fontWeight: FontWeight.bold,
+          fontSize: 11,
+        ),
       ),
     );
   }

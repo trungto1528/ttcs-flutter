@@ -21,7 +21,7 @@ class StoryFetcher {
   Future<Map<String, dynamic>?> fetchStoryAdmin(
       int storyId, int adminId) async {
     final res = await http.get(
-      Uri.parse("$baseUrl/stories/$storyId/admin"), // ✅ FIX URL
+      Uri.parse("$baseUrl/stories/$storyId/admin"),
       headers: {"userId": adminId.toString()},
     );
 
@@ -136,7 +136,7 @@ class StoryFetcher {
   }
 
   // ================= UPLOAD COVER =================
-  Future<String?> uploadCover(File file, String fileName) async {
+  Future<String?> uploadCover(File file) async {
     try {
       var request = http.MultipartRequest(
         'POST',
@@ -146,7 +146,6 @@ class StoryFetcher {
       request.files.add(await http.MultipartFile.fromPath(
         'file',
         file.path,
-        filename: fileName,
       ));
 
       var response = await request.send();

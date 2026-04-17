@@ -1,47 +1,40 @@
 import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:dio/dio.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:open_file/open_file.dart';
+import 'package:package_info_plus/package_info_plus.dart';
+import 'package:pub_semver/pub_semver.dart';
 
 class OtaService {
   final String api =
       "https://api.github.com/repos/trungto1528/ttcs-flutter/releases/latest";
 
-  // ================= PARSE VERSION =================
+  // ================= GET LOCAL VERSION (REAL APP VERSION) =================
+  Future<Map<String, dynamic>> getLocalVersion() async {
+    final info = await PackageInfo.fromPlatform();
+
+    return {
+      "versionName": info.version,
+      "buildNumber": int.tryParse(info.buildNumber) ?? 0,
+    };
+  }
+
+  // ================= PARSE GITHUB TAG =================
   Map<String, dynamic> _parseTag(String tag) {
     // v1.0.2+4
     final clean = tag.replaceFirst('v', '');
     final parts = clean.split('+');
 
-    final versionName = parts[0];
-    final buildNumber = parts.length > 1 ? int.tryParse(parts[1]) ?? 0 : 0;
-
     return {
-      "versionName": versionName,
-      "buildNumber": buildNumber,
+      "versionName": parts[0],
+      "buildNumber": parts.length > 1 ? int.tryParse(parts[1]) ?? 0 : 0,
     };
   }
 
-  // ================= GET LOCAL VERSION =================
-  Future<Map<String, dynamic>> getLocalVersion() async {
-    final prefs = await SharedPreferences.getInstance();
-
-    return {
-      "versionName": prefs.getString("versionName") ?? "0.0.0",
-      "buildNumber": prefs.getInt("buildNumber") ?? 0,
-    };
-  }
-
-  Future<void> saveLocalVersion(String version, int build) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString("versionName", version);
-    await prefs.setInt("buildNumber", build);
-  }
-
-  // ================= CHECK =================
+  // ================= CHECK UPDATE =================
   Future<Map<String, dynamic>?> checkUpdate() async {
     try {
       final res = await http.get(Uri.parse(api));
@@ -51,9 +44,9 @@ class OtaService {
       final data = jsonDecode(res.body);
 
       final assets = data["assets"];
-      if (assets == null || assets.isEmpty) return null;
+      if (assets == null || (assets as List).isEmpty) return null;
 
-      final apk = (assets as List).firstWhere(
+      final apk = (assets).firstWhere(
             (e) => e["name"].toString().endsWith(".apk"),
         orElse: () => null,
       );
@@ -74,22 +67,31 @@ class OtaService {
     }
   }
 
-  // ================= COMPARE VERSION =================
+  // ================= COMPARE VERSION (SMART) =================
   bool _isNewer(Map remote, Map local) {
-    final remoteBuild = remote["buildNumber"];
-    final localBuild = local["buildNumber"];
+    try {
+      final remoteV = Version.parse(remote["versionName"]);
+      final localV = Version.parse(local["versionName"]);
 
-    return remoteBuild > localBuild;
+      if (remoteV > localV) return true;
+      if (remoteV == localV) {
+        return remote["buildNumber"] > local["buildNumber"];
+      }
+      return false;
+    } catch (_) {
+      // fallback nếu parse lỗi
+      return remote["buildNumber"] > local["buildNumber"];
+    }
   }
 
-  // ================= DOWNLOAD =================
+  // ================= DOWNLOAD APK =================
   Future<String?> downloadApk(
       String url, {
         Function(double progress)? onProgress,
       }) async {
     try {
-      final dir = await getExternalStorageDirectory();
-      final path = "${dir!.path}/update.apk";
+      final dir = await getApplicationDocumentsDirectory();
+      final path = "${dir.path}/update.apk";
 
       await Dio().download(
         url,
@@ -108,9 +110,10 @@ class OtaService {
     }
   }
 
-  // ================= INSTALL =================
+  // ================= INSTALL APK =================
   Future<void> installApk(String path) async {
-    await OpenFile.open(path);
+    final result = await OpenFile.open(path);
+    print("Install result: ${result.type} - ${result.message}");
   }
 
   // ================= MAIN FLOW =================
@@ -122,12 +125,14 @@ class OtaService {
 
     if (!_isNewer(remote, local)) return;
 
-    _showUpdateDialog(context, remote);
+    _showUpdateDialog(context, remote, local);
   }
 
   // ================= UI =================
-  void _showUpdateDialog(BuildContext context, Map data) {
+  void _showUpdateDialog(
+      BuildContext context, Map remote, Map local) {
     double progress = 0;
+    bool isDownloading = false;
 
     showDialog(
       context: context,
@@ -139,22 +144,55 @@ class OtaService {
               title: const Text("Cập nhật mới"),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text("Version: ${data["versionName"]}"),
-                  const SizedBox(height: 10),
-                  if (progress > 0)
+                  // 👉 VERSION INFO
+                  Row(
+                    children: [
+                      const Text("Hiện tại: "),
+                      Text(
+                        "${local["versionName"]} (${local["buildNumber"]})",
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      const Text("Mới: "),
+                      Text(
+                        "${remote["versionName"]} (${remote["buildNumber"]})",
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.green,
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  if (isDownloading) ...[
                     LinearProgressIndicator(value: progress),
+                    const SizedBox(height: 8),
+                    Text("${(progress * 100).toStringAsFixed(0)}%"),
+                  ],
                 ],
               ),
               actions: [
                 TextButton(
-                  onPressed: () => Navigator.pop(ctx),
+                  onPressed:
+                  isDownloading ? null : () => Navigator.pop(ctx),
                   child: const Text("Bỏ qua"),
                 ),
                 ElevatedButton(
-                  onPressed: () async {
+                  onPressed: isDownloading
+                      ? null
+                      : () async {
+                    setState(() => isDownloading = true);
+
                     final path = await downloadApk(
-                      data["url"],
+                      remote["url"],
                       onProgress: (p) {
                         setState(() => progress = p);
                       },
@@ -162,12 +200,9 @@ class OtaService {
 
                     if (path != null) {
                       await installApk(path);
-
-                      await saveLocalVersion(
-                        data["versionName"],
-                        data["buildNumber"],
-                      );
                     }
+
+                    Navigator.pop(ctx);
                   },
                   child: const Text("Cập nhật"),
                 ),

@@ -1,25 +1,17 @@
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:crop_your_image/crop_your_image.dart';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'package:image_picker/image_picker.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/User.dart';
 import '../models/app_theme_mode.dart';
-import '../services/auth.dart';
 import '../services/ota.dart';
-
 import 'admin_management.dart';
 import 'change_password.dart';
-import 'create_chapter_screen.dart';
-import 'create_story_screen.dart';
 import 'login_screen.dart';
 import 'my_stories.dart';
+import 'story_chapter_create.dart';
 
 class ProfilePage extends StatefulWidget {
   final AppThemeMode currentMode;
@@ -57,6 +49,15 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
+  Color _getRoleColor(String role) {
+    switch (role.toUpperCase()) {
+      case "ADMIN":
+        return Colors.green;
+      default:
+        return Colors.blueGrey;
+    }
+  }
+
   Future<void> logout() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove("user");
@@ -77,128 +78,75 @@ class _ProfilePageState extends State<ProfilePage> {
   void _openSettings() {
     showModalBottomSheet(
       context: context,
-      builder: (_) => Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const SizedBox(height: 10),
-          const Text("Giao diện",
-              style: TextStyle(fontWeight: FontWeight.bold)),
-          RadioGroup<AppThemeMode>(
-            groupValue: widget.currentMode,
-            onChanged: (value) {
-              if (value != null) widget.onThemeChanged(value);
-            },
-            child: const Column(
-              children: [
-                RadioListTile(value: AppThemeMode.light, title: Text("Sáng")),
-                RadioListTile(value: AppThemeMode.dark, title: Text("Tối")),
-                RadioListTile(
-                    value: AppThemeMode.system,
-                    title: Text("Theo hệ thống")),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+      builder: (_) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 12),
+              const Text(
+                "Cài đặt",
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
 
-  Future<void> _checkUpdate() async {
-    await OtaService().checkAndUpdate(context);
-  }
+              // 👉 DARK / LIGHT MODE
+              ListTile(
+                leading: const Icon(Icons.dark_mode),
+                title: const Text("Chế độ giao diện"),
+                trailing: DropdownButton<AppThemeMode>(
+                  value: widget.currentMode,
+                  underline: const SizedBox(),
+                  items: const [
+                    DropdownMenuItem(
+                      value: AppThemeMode.light,
+                      child: Text("Sáng"),
+                    ),
+                    DropdownMenuItem(
+                      value: AppThemeMode.dark,
+                      child: Text("Tối"),
+                    ),
+                    DropdownMenuItem(
+                      value: AppThemeMode.system,
+                      child: Text("Hệ thống"),
+                    ),
+                  ],
+                  onChanged: (mode) {
+                    if (mode != null) {
+                      widget.onThemeChanged(mode);
+                    }
+                  },
+                ),
+              ),
 
-  Future<void> _changeName() async {
-    if (user == null) return;
+              // 👉 ĐỔI MẬT KHẨU
+              ListTile(
+                leading: const Icon(Icons.lock),
+                title: const Text("Đổi mật khẩu"),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          ChangePasswordScreen(username: user!.username),
+                    ),
+                  );
+                },
+              ),
 
-    final controller = TextEditingController(text: user!.displayName);
-
-    final newName = await showDialog<String>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text("Đổi tên"),
-        content: TextField(controller: controller),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text("Huỷ")),
-          ElevatedButton(
-              onPressed: () => Navigator.pop(context, controller.text),
-              child: const Text("Lưu")),
-        ],
-      ),
-    );
-
-    if (newName != null && newName.isNotEmpty) {
-      final res = await Auth().updateDisplayName(user!.id, newName);
-
-      if (res == "OK") {
-        setState(() => user!.displayName = newName);
-
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString("user", jsonEncode(user!.toJson()));
-      }
-    }
-  }
-
-  Future<void> _changeAvatar() async {
-    if (user == null) return;
-
-    final picked =
-    await ImagePicker().pickImage(source: ImageSource.gallery);
-    if (picked == null) return;
-
-    final bytes = await picked.readAsBytes();
-    final controller = CropController();
-
-    await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => Scaffold(
-          appBar: AppBar(
-            title: const Text("Cắt ảnh"),
-            actions: [
-              IconButton(
-                icon: const Icon(Icons.check),
-                onPressed: () => controller.crop(),
-              )
+              // 👉 OTA
+              ListTile(
+                leading: const Icon(Icons.system_update),
+                title: const Text("Kiểm tra cập nhật"),
+                onTap: () {
+                  Navigator.pop(context);
+                  OtaService().checkAndUpdate(context);
+                },
+              ),
             ],
           ),
-          body: Crop(
-            controller: controller,
-            image: bytes,
-            aspectRatio: 1,
-            withCircleUi: true,
-            onCropped: (data) async {
-              Navigator.pop(context);
-
-              final dir = await getTemporaryDirectory();
-              final file = File("${dir.path}/avatar.png");
-              await file.writeAsBytes(data);
-
-              var request = http.MultipartRequest(
-                'POST',
-                Uri.parse(
-                    "http://140.245.45.167:7777/api/users/upload-avatar"),
-              );
-
-              request.fields['username'] = user!.username;
-              request.files
-                  .add(await http.MultipartFile.fromPath('file', file.path));
-
-              final res = await request.send();
-
-              if (res.statusCode == 200) {
-                final body = await res.stream.bytesToString();
-
-                setState(() => user!.avatarUrl = body);
-
-                final prefs = await SharedPreferences.getInstance();
-                await prefs.setString("user", jsonEncode(user!.toJson()));
-              }
-            },
-          ),
-        ),
-      ),
+        );
+      },
     );
   }
 
@@ -207,13 +155,88 @@ class _ProfilePageState extends State<ProfilePage> {
       leading: Icon(icon),
       title: Text(title),
       trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-      tileColor: Theme.of(context).cardColor,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       onTap: onTap,
     );
   }
+
+  Widget _buildHeader() {
+    return Row(
+      children: [
+        ClipOval(
+          child: CachedNetworkImage(
+            imageUrl: "$baseAvatar${user!.avatarUrl}",
+            width: 72,
+            height: 72,
+            fit: BoxFit.cover,
+            placeholder: (_, __) => const SizedBox(
+              width: 72,
+              height: 72,
+              child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+            ),
+            errorWidget: (_, __, ___) => const Icon(Icons.person, size: 72),
+          ),
+        ),
+        const SizedBox(width: 16),
+
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                user!.displayName,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  Flexible(
+                    child: Text(
+                      "@${user!.username}",
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: _getRoleColor(user!.role),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      user!.role,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+
+        // 👉 Nút logout
+        IconButton(
+          icon: const Icon(Icons.logout, color: Colors.red),
+          onPressed: logout,
+        ),
+      ],
+    );
+  }
+
+  bool get isAdmin => user?.role.toUpperCase() == "ADMIN";
 
   @override
   Widget build(BuildContext context) {
@@ -224,81 +247,54 @@ class _ProfilePageState extends State<ProfilePage> {
           IconButton(
             icon: const Icon(Icons.settings),
             onPressed: _openSettings,
-          )
+          ),
         ],
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           if (user == null) ...[
+            const SizedBox(height: 40),
             const Icon(Icons.person, size: 80),
-            const SizedBox(height: 10),
-            ElevatedButton(
-                onPressed: _goLogin, child: const Text("Đăng nhập")),
-          ] else ...[
+            const SizedBox(height: 12),
             Center(
-              child: GestureDetector(
-                onTap: _changeAvatar,
-                child: ClipOval(
-                  child: CachedNetworkImage(
-                    imageUrl: "$baseAvatar${user!.avatarUrl}",
-                    width: 100,
-                    height: 100,
-                    fit: BoxFit.cover,
-                  ),
-                ),
+              child: ElevatedButton(
+                onPressed: _goLogin,
+                child: const Text("Đăng nhập"),
               ),
             ),
-
-            const SizedBox(height: 10),
-
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(user!.displayName,
-                    style: const TextStyle(
-                        fontSize: 18, fontWeight: FontWeight.bold)),
-                IconButton(
-                    icon: const Icon(Icons.edit, size: 18),
-                    onPressed: _changeName),
-              ],
-            ),
-
+          ] else ...[
+            _buildHeader(),
             const SizedBox(height: 20),
 
-            _tile(Icons.add_box, "Đăng truyện",
-                    () => Navigator.push(context,
-                    MaterialPageRoute(builder: (_) => const CreateStoryScreen()))),
+            // ================= COMMON =================
+            _tile(Icons.add_box, "Đăng nội dung", () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const StoryChapterScreen()),
+              );
+            }),
 
-            _tile(Icons.post_add, "Đăng chương",
-                    () => Navigator.push(context,
-                    MaterialPageRoute(builder: (_) => const CreateChapterScreen()))),
+            _tile(Icons.menu_book, "Truyện của tôi", () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => MyStoriesScreen(userId: user!.id),
+                ),
+              );
+            }),
 
-            _tile(Icons.menu_book, "Truyện của tôi",
-                    () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (_) => MyStoriesScreen(userId: user!.id)))),
-
-            if (user!.role == "ADMIN")
-              _tile(Icons.admin_panel_settings, "Quản lý truyện",
-                      () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (_) =>
-                              AdminStoryManagerScreen(adminId: user!.id)))),
-
-            _tile(Icons.lock, "Đổi mật khẩu",
-                    () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (_) =>
-                            ChangePasswordScreen(username: user!.username)))),
-
-            _tile(Icons.system_update, "Kiểm tra cập nhật", _checkUpdate),
-
-            _tile(Icons.logout, "Đăng xuất", logout),
-          ]
+            // ================= ADMIN ONLY =================
+            if (isAdmin)
+              _tile(Icons.admin_panel_settings, "Quản lý tất cả truyện", () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => AdminStoryManagerScreen(adminId: user!.id),
+                  ),
+                );
+              }),
+          ],
         ],
       ),
     );
