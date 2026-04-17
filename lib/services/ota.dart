@@ -1,60 +1,49 @@
 import 'dart:convert';
-
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:install_plugin/install_plugin.dart';
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:pub_semver/pub_semver.dart';
+import 'package:ota_update/ota_update.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 class OtaService {
   final String api =
       "https://api.github.com/repos/trungto1528/ttcs-flutter/releases/latest";
 
-  // ================= GET LOCAL VERSION (REAL APP VERSION) =================
   Future<Map<String, dynamic>> getLocalVersion() async {
     final info = await PackageInfo.fromPlatform();
-
     return {
       "versionName": info.version,
       "buildNumber": int.tryParse(info.buildNumber) ?? 0,
     };
   }
 
-  // ================= PARSE GITHUB TAG =================
   Map<String, dynamic> _parseTag(String tag) {
-    // v1.0.2+4
     final clean = tag.replaceFirst('v', '');
     final parts = clean.split('+');
-
     return {
       "versionName": parts[0],
       "buildNumber": parts.length > 1 ? int.tryParse(parts[1]) ?? 0 : 0,
     };
   }
 
-  // ================= CHECK UPDATE =================
   Future<Map<String, dynamic>?> checkUpdate() async {
     try {
       final res = await http.get(Uri.parse(api));
-
       if (res.statusCode != 200) return null;
 
       final data = jsonDecode(res.body);
+      final assets = data["assets"] as List;
+      if (assets.isEmpty) return null;
 
-      final assets = data["assets"];
-      if (assets == null || (assets as List).isEmpty) return null;
-
-      final apk = (assets).firstWhere(
-        (e) => e["name"].toString().endsWith(".apk"),
+      final apk = assets.firstWhere(
+            (e) => e["name"].toString().endsWith(".apk"),
         orElse: () => null,
       );
 
       if (apk == null) return null;
 
       final parsed = _parseTag(data["tag_name"]);
-
       return {
         "tag": data["tag_name"],
         "versionName": parsed["versionName"],
@@ -62,154 +51,144 @@ class OtaService {
         "url": apk["browser_download_url"],
       };
     } catch (e) {
-      debugPrint("OTA error: $e");
+      debugPrint("Check update error: $e");
       return null;
     }
   }
 
-  // ================= COMPARE VERSION (SMART) =================
   bool _isNewer(Map remote, Map local) {
     try {
       final remoteV = Version.parse(remote["versionName"]);
       final localV = Version.parse(local["versionName"]);
-
       if (remoteV > localV) return true;
-      if (remoteV == localV) {
-        return remote["buildNumber"] > local["buildNumber"];
-      }
+      if (remoteV == localV) return remote["buildNumber"] > local["buildNumber"];
       return false;
     } catch (_) {
-      // fallback nếu parse lỗi
       return remote["buildNumber"] > local["buildNumber"];
     }
   }
 
-  // ================= DOWNLOAD APK =================
-  Future<String?> downloadApk(
-    String url, {
-    Function(double progress)? onProgress,
-  }) async {
-    try {
-      final dir = await getApplicationDocumentsDirectory();
-      final path = "${dir.path}/update.apk";
-
-      await Dio().download(
-        url,
-        path,
-        onReceiveProgress: (received, total) {
-          if (total != -1 && onProgress != null) {
-            onProgress(received / total);
-          }
-        },
-      );
-
-      return path;
-    } catch (e) {
-      debugPrint("Download error: $e");
-      return null;
-    }
-  }
-
-  // ================= INSTALL APK =================
-  Future<void> installApk(String path) async {
-    try {
-      await InstallPlugin.installApk(path);
-    } catch (e) {
-      print("Install error: $e");
-    }
-  }
-
-  // ================= MAIN FLOW =================
+  // Luồng chính xử lý UI
   Future<void> checkAndUpdate(BuildContext context) async {
-    final remote = await checkUpdate();
-    if (remote == null) return;
+    // Hiện loading trong khi check (tùy chọn)
+    // showLoading(context);
 
+    final remote = await checkUpdate();
     final local = await getLocalVersion();
-    _showUpdateDialog(context, remote, local);
+
+    if (!context.mounted) return;
+
+    if (remote == null || !_isNewer(remote, local)) {
+      // HIỂN THỊ KHI ĐÃ LÀ BẢN MỚI NHẤT
+      _showNoUpdateDialog(context, local);
+      return;
+    }
+
+    // HIỂN THỊ KHI CÓ BẢN CẬP NHẬT MỚI
+    _showUpdateAvailableDialog(context, remote, local);
   }
 
-  // ================= UI =================
-  void _showUpdateDialog(BuildContext context, Map remote, Map local) {
-    double progress = 0;
-    bool isDownloading = false;
+  // Dialog thông báo khi app đã là bản mới nhất
+  void _showNoUpdateDialog(BuildContext context, Map local) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.check_circle, color: Colors.green),
+            SizedBox(width: 10),
+            Text("Tuyệt vời!"),
+          ],
+        ),
+        content: Text(
+          "Ứng dụng của bạn đã ở phiên bản mới nhất: ${local["versionName"]} (${local["buildNumber"]})",
+          style: const TextStyle(fontSize: 16),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text("Đóng"),
+          ),
+        ],
+      ),
+    );
+  }
 
+  // Dialog thông báo khi có bản cập nhật mới (có tiến trình tải)
+  void _showUpdateAvailableDialog(BuildContext context, Map remote, Map local) {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (ctx) {
+      builder: (context) {
+        double progress = 0;
+        bool isDownloading = false;
+        String error = "";
+
         return StatefulBuilder(
           builder: (ctx, setState) {
-            if (!_isNewer(remote, local)) {
-              return AlertDialog(
-                title: const Text("Không có bản cập nhật mới"),
-                content: Text(
-                  "Version hiện tại: ${local["versionName"]} (${local["buildNumber"]})",
-                ),
-              );
-            }
             return AlertDialog(
-              title: const Text("Cập nhật mới"),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+              title: const Text("Có bản cập nhật mới!"),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      const Text("Hiện tại: "),
-                      Text(
-                        "${local["versionName"]} (${local["buildNumber"]})",
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                    ],
+                  Text("Phiên bản hiện tại: ${local["versionName"]} (${local["buildNumber"]})"),
+                  Text(
+                    "Phiên bản mới: ${remote["versionName"]} (${remote["buildNumber"]})",
+                    style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold),
                   ),
-                  const SizedBox(height: 6),
-                  Row(
-                    children: [
-                      const Text("Mới: "),
-                      Text(
-                        "${remote["versionName"]} (${remote["buildNumber"]})",
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.green,
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 12),
-
                   if (isDownloading) ...[
+                    const SizedBox(height: 20),
                     LinearProgressIndicator(value: progress),
-                    const SizedBox(height: 8),
-                    Text("${(progress * 100).toStringAsFixed(0)}%"),
+                    const SizedBox(height: 10),
+                    Center(child: Text("${(progress * 100).toStringAsFixed(0)}%")),
                   ],
+                  if (error.isNotEmpty) ...[
+                    const SizedBox(height: 10),
+                    Text(error, style: const TextStyle(color: Colors.red, fontSize: 12)),
+                  ]
                 ],
               ),
               actions: [
-                TextButton(
-                  onPressed: isDownloading ? null : () => Navigator.pop(ctx),
-                  child: const Text("Bỏ qua"),
-                ),
+                if (!isDownloading)
+                  TextButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    child: const Text("Để sau"),
+                  ),
                 ElevatedButton(
                   onPressed: isDownloading
                       ? null
                       : () async {
-                          setState(() => isDownloading = true);
+                    var status = await Permission.requestInstallPackages.request();
+                    if (status.isGranted) {
+                      setState(() {
+                        isDownloading = true;
+                        error = "";
+                      });
 
-                          final path = await downloadApk(
-                            remote["url"],
-                            onProgress: (p) {
-                              setState(() => progress = p);
-                            },
-                          );
-
-                          if (path != null) {
-                            await installApk(path);
+                      OtaUpdate().execute(remote["url"], destinationFilename: 'update.apk').listen(
+                            (event) {
+                          if (event.status == OtaStatus.DOWNLOADING) {
+                            double p = double.tryParse(event.value ?? "0") ?? 0;
+                            setState(() => progress = p / 100);
+                          } else if (event.status.index > 3) {
+                            setState(() {
+                              isDownloading = false;
+                              error = "Lỗi: ${event.status.name}";
+                            });
                           }
-
-                          Navigator.pop(ctx);
                         },
-                  child: const Text("Cập nhật"),
+                        onError: (e) => setState(() {
+                          isDownloading = false;
+                          error = "Lỗi tải xuống";
+                        }),
+                      );
+                    } else {
+                      setState(() => error = "Vui lòng cấp quyền để cài đặt.");
+                    }
+                  },
+                  child: Text(isDownloading ? "Đang tải..." : "Cập nhật ngay"),
                 ),
               ],
             );
