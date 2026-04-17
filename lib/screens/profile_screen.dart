@@ -133,8 +133,6 @@ class _ProfilePageState extends State<ProfilePage> {
                   );
                 },
               ),
-
-              // 👉 OTA
               ListTile(
                 leading: const Icon(Icons.system_update),
                 title: const Text("Kiểm tra cập nhật"),

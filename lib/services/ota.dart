@@ -122,9 +122,6 @@ class OtaService {
     if (remote == null) return;
 
     final local = await getLocalVersion();
-
-    if (!_isNewer(remote, local)) return;
-
     _showUpdateDialog(context, remote, local);
   }
 
@@ -140,13 +137,13 @@ class OtaService {
       builder: (ctx) {
         return StatefulBuilder(
           builder: (ctx, setState) {
+            if (!_isNewer(remote, local)) return AlertDialog(semanticLabel: "Không có bản cập nhật mới");
             return AlertDialog(
               title: const Text("Cập nhật mới"),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // 👉 VERSION INFO
                   Row(
                     children: [
                       const Text("Hiện tại: "),
