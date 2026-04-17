@@ -8,7 +8,6 @@ val keystorePropertiesFile = rootProject.file("key.properties")
 // 2. Chỉ load nếu file tồn tại (Ở Local)
 val isLocalSigningReady = if (keystorePropertiesFile.exists()) {
     keystoreProperties.load(FileInputStream(keystorePropertiesFile))
-    // Kiểm tra thêm xem các key cần thiết có đủ không
     keystoreProperties.containsKey("keyAlias") && 
     keystoreProperties.containsKey("keyPassword") &&
     keystoreProperties.containsKey("storeFile") && 
@@ -29,6 +28,9 @@ android {
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
+        // BẬT DESUGARING ĐỂ FIX LỖI OTA_UPDATE
+        isCoreLibraryDesugaringEnabled = true
+        
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
@@ -39,14 +41,17 @@ android {
 
     defaultConfig {
         applicationId = "com.tqtrung.novelread.novel_app"
-        minSdk = flutter.minSdkVersion
+        // Đảm bảo minSdk ít nhất là 21 để hỗ trợ đa số thư viện hiện nay
+        minSdk = 21 
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        
+        // Cần thiết khi bật Desugaring
+        multiDexEnabled = true
     }
 
     signingConfigs {
-        // 3. Cấu hình signing chỉ khi có đủ dữ liệu từ file local
         if (isLocalSigningReady) {
             create("release") {
                 keyAlias = keystoreProperties["keyAlias"] as String
@@ -59,9 +64,6 @@ android {
 
     buildTypes {
         getByName("release") {
-            // 4. CHỐT CHẶN QUAN TRỌNG:
-            // Nếu có file local thì dùng signingConfigs.release
-            // Nếu không (trên GitHub) thì set là null để build bản Unsigned
             signingConfig = if (isLocalSigningReady) {
                 signingConfigs.getByName("release")
             } else {
@@ -72,6 +74,11 @@ android {
             isShrinkResources = false
         }
     }
+}
+
+dependencies {
+    // THÊM THƯ VIỆN DESUGAR JDK LIBS
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
 }
 
 flutter {
