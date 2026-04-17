@@ -46,7 +46,7 @@ dependencies:
   uuid: ^3.0.7
   dio: ^5.4.0
   path_provider: ^2.1.2
-  ota_update: ^5.1.0
+  ota_update: ^7.0.2
   permission_handler: ^11.0.0
 dev_dependencies:
   flutter_test:
