@@ -1,11 +1,11 @@
 import 'dart:convert';
 
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:dio/dio.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:open_file/open_file.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:pub_semver/pub_semver.dart';
 
 class OtaService {
@@ -47,7 +47,7 @@ class OtaService {
       if (assets == null || (assets as List).isEmpty) return null;
 
       final apk = (assets).firstWhere(
-            (e) => e["name"].toString().endsWith(".apk"),
+        (e) => e["name"].toString().endsWith(".apk"),
         orElse: () => null,
       );
 
@@ -86,9 +86,9 @@ class OtaService {
 
   // ================= DOWNLOAD APK =================
   Future<String?> downloadApk(
-      String url, {
-        Function(double progress)? onProgress,
-      }) async {
+    String url, {
+    Function(double progress)? onProgress,
+  }) async {
     try {
       final dir = await getApplicationDocumentsDirectory();
       final path = "${dir.path}/update.apk";
@@ -126,8 +126,7 @@ class OtaService {
   }
 
   // ================= UI =================
-  void _showUpdateDialog(
-      BuildContext context, Map remote, Map local) {
+  void _showUpdateDialog(BuildContext context, Map remote, Map local) {
     double progress = 0;
     bool isDownloading = false;
 
@@ -137,7 +136,14 @@ class OtaService {
       builder: (ctx) {
         return StatefulBuilder(
           builder: (ctx, setState) {
-            if (!_isNewer(remote, local)) return AlertDialog(semanticLabel: "Không có bản cập nhật mới");
+            if (!_isNewer(remote, local)) {
+              return AlertDialog(
+                title: const Text("Không có bản cập nhật mới"),
+                content: Text(
+                  "Version hiện tại: ${local["versionName"]} (${local["buildNumber"]})",
+                ),
+              );
+            }
             return AlertDialog(
               title: const Text("Cập nhật mới"),
               content: Column(
@@ -178,29 +184,28 @@ class OtaService {
               ),
               actions: [
                 TextButton(
-                  onPressed:
-                  isDownloading ? null : () => Navigator.pop(ctx),
+                  onPressed: isDownloading ? null : () => Navigator.pop(ctx),
                   child: const Text("Bỏ qua"),
                 ),
                 ElevatedButton(
                   onPressed: isDownloading
                       ? null
                       : () async {
-                    setState(() => isDownloading = true);
+                          setState(() => isDownloading = true);
 
-                    final path = await downloadApk(
-                      remote["url"],
-                      onProgress: (p) {
-                        setState(() => progress = p);
-                      },
-                    );
+                          final path = await downloadApk(
+                            remote["url"],
+                            onProgress: (p) {
+                              setState(() => progress = p);
+                            },
+                          );
 
-                    if (path != null) {
-                      await installApk(path);
-                    }
+                          if (path != null) {
+                            await installApk(path);
+                          }
 
-                    Navigator.pop(ctx);
-                  },
+                          Navigator.pop(ctx);
+                        },
                   child: const Text("Cập nhật"),
                 ),
               ],
