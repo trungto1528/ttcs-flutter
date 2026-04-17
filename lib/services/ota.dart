@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:open_file/open_file.dart';
+import 'package:install_plugin/install_plugin.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pub_semver/pub_semver.dart';
@@ -112,8 +112,11 @@ class OtaService {
 
   // ================= INSTALL APK =================
   Future<void> installApk(String path) async {
-    final result = await OpenFile.open(path);
-    print("Install result: ${result.type} - ${result.message}");
+    try {
+      await InstallPlugin.installApk(path);
+    } catch (e) {
+      print("Install error: $e");
+    }
   }
 
   // ================= MAIN FLOW =================
