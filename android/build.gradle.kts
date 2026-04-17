@@ -24,22 +24,20 @@ tasks.register<Delete>("clean") {
     delete(rootProject.layout.buildDirectory)
 }
 
-// --- THÊM ĐOẠN NÀY ĐỂ FIX LỖI NAMESPACE TRÊN GITHUB ACTIONS ---
+// --- FIX LỖI NAMESPACE TRÊN GITHUB ACTIONS (PHIÊN BẢN KOTLIN DSL) ---
 subprojects {
-    afterEvaluate {
-        // Kiểm tra xem project có phải là plugin Android không
-        if (project.extensions.findByName("android") != null) {
-            val android = project.extensions.getByName("android") as com.android.build.gradle.BaseExtension
-            
-            // Nếu là ota_update và chưa có namespace thì tự động thêm vào
-            if (project.name == "ota_update" && android.namespace == null) {
-                android.namespace = "main.it.implicit.ota_update"
-            }
-            
-            // Fix tổng quát cho các plugin cũ khác nếu cần
-            if (android.namespace == null) {
-                android.namespace = project.group.toString()
-            }
+    // Thay vì dùng afterEvaluate, ta can thiệp trực tiếp vào plugin management
+    plugins.withType<com.android.build.gradle.api.AndroidBasePlugin> {
+        val android = extensions.getByType<com.android.build.gradle.BaseExtension>()
+        
+        // Fix riêng cho ota_update
+        if (project.name == "ota_update") {
+            android.namespace = "main.it.implicit.ota_update"
+        }
+
+        // Fix tổng quát cho bất kỳ plugin nào bị thiếu namespace
+        if (android.namespace == null) {
+            android.namespace = project.group.toString()
         }
     }
 }
