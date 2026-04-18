@@ -43,7 +43,7 @@ class _ChapterReaderScreenState extends State<ChapterReaderScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   final baseUrl = "http://140.245.45.167:7777/api";
-  final illusUrl = "http://140.245.45.167:7778/";
+  final illusUrl = "http://140.245.45.167:7778/chapter/";
   final baseCoverUrl = 'http://140.245.45.167:7778/cover/';
 
   @override
