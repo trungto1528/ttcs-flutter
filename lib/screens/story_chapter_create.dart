@@ -429,7 +429,7 @@ class _StoryChapterScreenState extends State<StoryChapterScreen>
                     controller: _chapterNo,
                     keyboardType: TextInputType.number,
                     decoration: const InputDecoration(
-                      labelText: "Số",
+                      labelText: "Chương số",
                       border: OutlineInputBorder(),
                     ),
                   ),
@@ -439,7 +439,7 @@ class _StoryChapterScreenState extends State<StoryChapterScreen>
                   child: TextField(
                     controller: _chapterTitle,
                     decoration: const InputDecoration(
-                      labelText: "Tiêu đề chương",
+                      labelText: "Tiêu đề",
                       border: OutlineInputBorder(),
                     ),
                   ),
