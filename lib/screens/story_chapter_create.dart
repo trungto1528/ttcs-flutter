@@ -369,7 +369,7 @@ class _StoryChapterScreenState extends State<StoryChapterScreen>
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  s['author'] ?? "",
+                                  s['createdByName'] ?? "",
                                   style: const TextStyle(
                                     fontSize: 12,
                                     color: Colors.grey,
@@ -409,7 +409,7 @@ class _StoryChapterScreenState extends State<StoryChapterScreen>
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        _selectedStory!['author'] ?? "",
+                        _selectedStory!['createdByName'] ?? "",
                         style: const TextStyle(color: Colors.grey),
                       ),
                     ],
