@@ -119,9 +119,9 @@ class _StoryDetailScreenState extends State<StoryDetailScreen> {
       });
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Lỗi tải truyện")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Lỗi tải truyện")));
     }
   }
 
@@ -142,9 +142,7 @@ class _StoryDetailScreenState extends State<StoryDetailScreen> {
   @override
   Widget build(BuildContext context) {
     if (storyLoading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     return Scaffold(
@@ -154,146 +152,145 @@ class _StoryDetailScreenState extends State<StoryDetailScreen> {
           IconButton(
             icon: bookmarkLoading
                 ? const SizedBox(
-              width: 20,
-              height: 20,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            )
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
                 : Icon(
-              isSaved ? Icons.favorite : Icons.favorite_border,
-              color: isSaved ? Colors.red : null,
-            ),
+                    isSaved ? Icons.favorite : Icons.favorite_border,
+                    color: isSaved ? Colors.red : null,
+                  ),
             onPressed: bookmarkLoading
                 ? null
                 : () async {
-              if (user == null) {
-                _showLoginRequiredDialog();
-                return;
-              }
+                    if (user == null) {
+                      _showLoginRequiredDialog();
+                      return;
+                    }
 
-              setState(() => bookmarkLoading = true);
+                    setState(() => bookmarkLoading = true);
 
-              if (isSaved) {
-                await Bookmark().unsaveStory(user!.id, widget.storyId);
-              } else {
-                await Bookmark().saveStory(user!.id, widget.storyId);
-              }
+                    if (isSaved) {
+                      await Bookmark().unsaveStory(user!.id, widget.storyId);
+                    } else {
+                      await Bookmark().saveStory(user!.id, widget.storyId);
+                    }
 
-              setState(() {
-                isSaved = !isSaved;
-                bookmarkLoading = false;
-              });
-            },
+                    setState(() {
+                      isSaved = !isSaved;
+                      bookmarkLoading = false;
+                    });
+                  },
           ),
         ],
       ),
 
-      body: ListView(
-        children: [
-          const Divider(),
+      body: RefreshIndicator(
+        onRefresh: init,
+        child: ListView(
+          children: [
+            const Divider(),
 
-          // ================= STORY HEADER =================
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(6),
-                  child: CachedNetworkImage(
-                    imageUrl: baseCoverUrl + (story['coverUrl'] ?? ""),
-                    height: 180,
-                    width: 120,
-                    fit: BoxFit.cover,
+            // ================= STORY HEADER =================
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(6),
+                    child: CachedNetworkImage(
+                      imageUrl: baseCoverUrl + (story['coverUrl'] ?? ""),
+                      height: 180,
+                      width: 120,
+                      fit: BoxFit.cover,
+                    ),
                   ),
-                ),
-                const SizedBox(width: 12),
+                  const SizedBox(width: 12),
 
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        story['title'] ?? "",
-                        style: const TextStyle(fontSize: 22),
-                      ),
-                      const SizedBox(height: 6),
-                      Text("Tác giả: ${story['author'] ?? ""}"),
-                      Text("Đăng bởi: ${story['createdByName'] ?? ""}"),
-                    ],
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          story['title'] ?? "",
+                          style: const TextStyle(fontSize: 22),
+                        ),
+                        const SizedBox(height: 6),
+                        Text("Tác giả: ${story['author'] ?? ""}"),
+                        Text("Đăng bởi: ${story['createdByName'] ?? ""}"),
+                      ],
+                    ),
                   ),
-                ),
-              ],
-            ),
-          ),
-
-          // ================= DESCRIPTION =================
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: ExpandableText(text: story['description'] ?? ""),
-          ),
-
-          const Padding(
-            padding: EdgeInsets.all(16),
-            child: Text(
-              "Danh sách chương",
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
+                ],
               ),
             ),
-          ),
 
-          // ================= GROUPED CHAPTER LIST =================
-          ...groupedChapters.entries.map((entry) {
-            final chapterNumber = entry.key;
-            final list = entry.value;
+            // ================= DESCRIPTION =================
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: ExpandableText(text: story['description'] ?? ""),
+            ),
 
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  child: Text(
-                    "Chương $chapterNumber",
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.blue,
+            const Padding(
+              padding: EdgeInsets.all(16),
+              child: Text(
+                "Danh sách chương",
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+            ),
+
+            // ================= GROUPED CHAPTER LIST =================
+            ...groupedChapters.entries.map((entry) {
+              final chapterNumber = entry.key;
+              final list = entry.value;
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
+                    child: Text(
+                      "Chương $chapterNumber",
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.blue,
+                      ),
                     ),
                   ),
-                ),
-
-                ...list.map((c) {
-                  return ListTile(
-                    title: Text(
-                      c["title"] ?? "",
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    subtitle: Text(
-                      " - ${c["createdByName"] ?? ""} (${c['createdById'] ?? ""})",
-                    ),
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => ChapterReaderScreen(
-                            chapterId: c["id"],
-                            storyId: widget.storyId,
-                            createdById: c["createdById"],
+                  ...list.map((c) {
+                    return ListTile(
+                      title: Text(
+                        c["title"] ?? "",
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      subtitle: Text(
+                        " - ${c["createdByName"] ?? ""} (${c['createdById'] ?? ""})",
+                      ),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => ChapterReaderScreen(
+                              chapterId: c["id"],
+                              storyId: widget.storyId,
+                              createdById: c["createdById"],
+                            ),
                           ),
-                        ),
-                      );
-                    },
-                  );
-                }),
-              ],
-            );
-          }),
-
-          const SizedBox(height: 20),
-        ],
+                        );
+                      },
+                    );
+                  }),
+                ],
+              );
+            }),
+            const SizedBox(height: 20),
+          ],
+        ),
       ),
     );
   }
