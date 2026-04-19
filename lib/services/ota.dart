@@ -203,11 +203,8 @@ class OtaService {
 
       final file = File(path);
 
-      // Nếu file đã tồn tại -> mở luôn (resume install)
       if (await file.exists()) {
-        await OpenFile.open(path);
-        onDone();
-        return;
+        await file.delete(); // xoá APK cũ
       }
 
       final dio = Dio();
