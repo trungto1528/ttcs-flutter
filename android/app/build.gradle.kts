@@ -42,7 +42,7 @@ android {
     defaultConfig {
         applicationId = "com.tqtrung.novelread.novel_app"
         // Đảm bảo minSdk ít nhất là 21 để hỗ trợ đa số thư viện hiện nay
-        minSdk = 21 
+        minSdk = flutter.minSdkVersion 
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName

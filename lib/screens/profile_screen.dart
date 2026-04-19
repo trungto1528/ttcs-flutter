@@ -1,7 +1,10 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/User.dart';
@@ -9,6 +12,7 @@ import '../models/app_theme_mode.dart';
 import '../services/ota.dart';
 import 'admin_management.dart';
 import 'change_password.dart';
+import 'crawl_screen.dart';
 import 'login_screen.dart';
 import 'my_stories.dart';
 import 'story_chapter_create.dart';
@@ -89,7 +93,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
               ),
 
-              // 👉 DARK / LIGHT MODE
+              //  DARK / LIGHT MODE
               ListTile(
                 leading: const Icon(Icons.dark_mode),
                 title: const Text("Chế độ giao diện"),
@@ -118,7 +122,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 ),
               ),
 
-              // 👉 ĐỔI MẬT KHẨU
+              //  ĐỔI MẬT KHẨU
               ListTile(
                 leading: const Icon(Icons.lock),
                 title: const Text("Đổi mật khẩu"),
@@ -148,6 +152,102 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
+  Future<void> _changeAvatar() async {
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(source: ImageSource.gallery);
+
+    if (picked == null) return;
+
+    final file = File(picked.path);
+
+    try {
+      var request = http.MultipartRequest(
+        "POST",
+        Uri.parse("http://140.245.45.167:7777/api/users/upload-avatar"),
+      );
+
+      request.files.add(await http.MultipartFile.fromPath("file", file.path));
+
+      request.fields["username"] = user!.username;
+
+      var response = await request.send();
+
+      if (response.statusCode == 200) {
+        final fileName = await response.stream.bytesToString();
+
+        setState(() {
+          user!.avatarUrl = "/$fileName";
+        });
+
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString("user", jsonEncode(user));
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Cập nhật avatar thành công")),
+        );
+      } else {
+        throw Exception("Upload failed");
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Lỗi upload avatar")));
+    }
+  }
+
+  Future<void> _changeName() async {
+    final controller = TextEditingController(text: user!.displayName);
+
+    final newName = await showDialog<String>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text("Đổi tên"),
+        content: TextField(controller: controller),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Hủy"),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, controller.text),
+            child: const Text("Lưu"),
+          ),
+        ],
+      ),
+    );
+
+    if (newName == null || newName.trim().isEmpty) return;
+
+    try {
+      final res = await http.post(
+        Uri.parse(
+          "http://140.245.45.167:7777/api/users/${user!.id}/displayName",
+        ),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({"displayName": newName}),
+      );
+
+      if (res.statusCode == 200) {
+        setState(() {
+          user!.displayName = newName;
+        });
+
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString("user", jsonEncode(user));
+
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text("Đổi tên thành công")));
+      } else {
+        throw Exception(res.body);
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Lỗi: $e")));
+    }
+  }
+
   Widget _tile(IconData icon, String title, VoidCallback onTap) {
     return ListTile(
       leading: Icon(icon),
@@ -161,18 +261,21 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget _buildHeader() {
     return Row(
       children: [
-        ClipOval(
-          child: CachedNetworkImage(
-            imageUrl: "$baseAvatar${user!.avatarUrl}",
-            width: 72,
-            height: 72,
-            fit: BoxFit.cover,
-            placeholder: (_, __) => const SizedBox(
+        GestureDetector(
+          onTap: _changeAvatar,
+          child: ClipOval(
+            child: CachedNetworkImage(
+              imageUrl: "$baseAvatar${user!.avatarUrl}",
               width: 72,
               height: 72,
-              child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+              fit: BoxFit.cover,
+              placeholder: (_, __) => const SizedBox(
+                width: 72,
+                height: 72,
+                child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+              ),
+              errorWidget: (_, __, ___) => const Icon(Icons.person, size: 72),
             ),
-            errorWidget: (_, __, ___) => const Icon(Icons.person, size: 72),
           ),
         ),
         const SizedBox(width: 16),
@@ -181,14 +284,26 @@ class _ProfilePageState extends State<ProfilePage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                user!.displayName,
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Flexible(
+                    child: Text(
+                      user!.displayName,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  GestureDetector(
+                    onTap: _changeName,
+                    child: const Icon(Icons.edit, size: 18),
+                  ),
+                ],
               ),
-              const SizedBox(height: 4),
               Row(
                 children: [
                   Flexible(
@@ -225,7 +340,7 @@ class _ProfilePageState extends State<ProfilePage> {
           ),
         ),
 
-        // 👉 Nút logout
+        // Nút logout
         IconButton(
           icon: const Icon(Icons.logout, color: Colors.red),
           onPressed: logout,
@@ -289,6 +404,15 @@ class _ProfilePageState extends State<ProfilePage> {
                   context,
                   MaterialPageRoute(
                     builder: (_) => AdminStoryManagerScreen(adminId: user!.id),
+                  ),
+                );
+              }),
+            if (isAdmin)
+              _tile(Icons.cloud_download, "Crawl truyện (Admin)", () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => CrawlScreen(userId:user!.id),
                   ),
                 );
               }),
