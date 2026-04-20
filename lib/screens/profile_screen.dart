@@ -408,7 +408,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 );
               }),
             if (isAdmin)
-              _tile(Icons.cloud_download, "Crawl truyện (Admin)", () {
+              _tile(Icons.cloud_download, "Nettrom Simulator🐧🐧🐧", () {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
