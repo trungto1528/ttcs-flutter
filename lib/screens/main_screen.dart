@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../services/ota.dart';
 import 'home_screen.dart';
 import 'library_screen.dart';
 import 'profile_screen.dart';
@@ -19,6 +20,11 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
+  @override
+  void initState(){
+    super.initState();
+    OtaService().cleanUpOldApk();
+  }
 
   @override
   Widget build(BuildContext context) {
