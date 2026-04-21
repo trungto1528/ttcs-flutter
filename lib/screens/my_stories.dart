@@ -17,6 +17,8 @@ class _MyStoriesScreenState extends State<MyStoriesScreen> {
 
   final baseCoverUrl = "http://140.245.45.167:7778/cover/";
 
+  int? expandedIndex;
+
   @override
   void initState() {
     super.initState();
@@ -80,7 +82,6 @@ class _MyStoriesScreenState extends State<MyStoriesScreen> {
     try {
       await ChapterFetcher().deleteChapter(chapterId, widget.userId);
 
-      //   cập nhật UI ngay (không cần reload)
       setState(() {
         for (var story in stories) {
           story['chapters']?.removeWhere((c) => c['id'] == chapterId);
@@ -152,134 +153,116 @@ class _MyStoriesScreenState extends State<MyStoriesScreen> {
           chapters.sort((a, b) =>
               (a['chapterNumber'] ?? 0).compareTo(b['chapterNumber'] ?? 0));
 
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // ================= STORY =================
-              InkWell(
+          return ExpansionTile(
+            initiallyExpanded: expandedIndex == index,
+            onExpansionChanged: (v) {
+              setState(() {
+                expandedIndex = v ? index : null;
+              });
+            },
+
+            // ===== COVER =====
+            leading: ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Image.network(
+                baseCoverUrl + (story['coverUrl'] ?? ""),
+                width: 50,
+                height: 75,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) =>
+                const Icon(Icons.book, size: 50),
+              ),
+            ),
+
+            // ===== TITLE =====
+            title: Text(
+              story['title'] ?? "Không có tên",
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+
+            // ===== SUBTITLE =====
+            subtitle: Row(
+              children: [
+                Container(
+                  padding:
+                  const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: _getStatusColor(story['status'])
+                        .withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    (story['status'] ?? "UNKNOWN").toString(),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: _getStatusColor(story['status']),
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  "(${chapters.length} chương)",
+                  style: const TextStyle(fontSize: 12),
+                ),
+              ],
+            ),
+
+            // ===== CHAPTER LIST =====
+            children: chapters.map<Widget>((c) {
+              return ListTile(
+                dense: true,
+                title: Text(
+                  "Chap ${c['chapterNumber']}: ${c['title']}",
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+
                 onTap: () {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) =>
-                          StoryDetailScreen(storyId: story['storyId']),
+                      builder: (_) => StoryDetailScreen(
+                        storyId: story['storyId'],
+                      ),
                     ),
                   );
                 },
-                child: Container(
-                  padding: const EdgeInsets.all(8),
-                  child: Row(
-                    children: [
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: Image.network(
-                          baseCoverUrl + (story['coverUrl'] ?? ""),
-                          width: 70,
-                          height: 105,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) =>
-                          const Icon(Icons.book, size: 70),
+
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // STATUS
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: _getStatusColor(c['status'])
+                            .withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        (c['status'] ?? "UNKNOWN").toString(),
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: _getStatusColor(c['status']),
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              story['title'] ?? "Không có tên",
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 6,
-                                vertical: 2,
-                              ),
-                              decoration: BoxDecoration(
-                                color: _getStatusColor(story['status'])
-                                    .withOpacity(0.15),
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Text(
-                                (story['status'] ?? "UNKNOWN").toString(),
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color: _getStatusColor(story['status']),
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
+
+                    const SizedBox(width: 6),
+
+                    // DELETE
+                    IconButton(
+                      icon: const Icon(Icons.delete,
+                          size: 18, color: Colors.red),
+                      onPressed: () => _confirmDelete(c['id']),
+                    ),
+                  ],
                 ),
-              ),
-
-              // ================= CHAPTER =================
-              ...chapters.map((c) {
-                return Padding(
-                  padding: const EdgeInsets.only(left: 90, bottom: 4),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: InkWell(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => StoryDetailScreen(
-                                  storyId: story['storyId'],
-                                ),
-                              ),
-                            );
-                          },
-                          child: Text(
-                            "Chap ${c['chapterNumber']}: ${c['title']}",
-                            style: const TextStyle(fontSize: 13),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ),
-
-                      //  NÚT XOÁ
-                      IconButton(
-                        icon: const Icon(Icons.delete,
-                            size: 18, color: Colors.red),
-                        onPressed: () => _confirmDelete(c['id']),
-                      ),
-
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: _getStatusColor(c['status'])
-                              .withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          (c['status'] ?? "UNKNOWN").toString(),
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: _getStatusColor(c['status']),
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              }),
-              const Divider(),
-            ],
+              );
+            }).toList(),
           );
         },
       ),
