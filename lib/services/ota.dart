@@ -31,6 +31,18 @@ class OtaService {
       "buildNumber": parts.length > 1 ? int.tryParse(parts[1]) ?? 0 : 0,
     };
   }
+  Future<void> cleanUpOldApk() async {
+  try {
+    final dir = await getExternalStorageDirectory();
+    final file = File("${dir!.path}/update.apk");
+    if (await file.exists()) {
+      await file.delete();
+      debugPrint("Đã dọn dẹp APK cũ thành công");
+    }
+  } catch (e) {
+    debugPrint("Lỗi dọn dẹp: $e");
+  }
+  }
 
   Future<Map<String, dynamic>?> checkUpdate() async {
     try {
