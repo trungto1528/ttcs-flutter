@@ -322,7 +322,7 @@ class _CrawlScreenState extends State<CrawlScreen> {
             child: TextField(
               controller: controller,
               decoration: InputDecoration(
-                hintText: "Dán link docln.sbs vào đây...",
+                hintText: "Paste link truyện nhà hako vào(docln hoặc ln.hako)",
                 prefixIcon: const Icon(Icons.link),
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                 suffixIcon: IconButton(
