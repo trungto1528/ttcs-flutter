@@ -285,7 +285,7 @@ class _StoryDetailScreenState extends State<StoryDetailScreen> {
                           overflow: TextOverflow.ellipsis,
                         ),
                         subtitle: Text(
-                          "Người đăng: ${c["createdByName"]} (${c['id']})",
+                          "Người đăng: ${c["createdByName"]} ",
                           style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
                         ),
                         trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 16),
