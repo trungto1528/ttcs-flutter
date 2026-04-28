@@ -1,4 +1,4 @@
-name: Build & Release APK (Flutter 3.41.2, auto tag)
+name: Build & Release Split APK (Flutter 3.41.2)
 
 on:
   push:
@@ -15,9 +15,9 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # QUAN TRỌNG: Thêm Java 17 để chạy được Desugaring cho ota_update
+      # Setup Java 17 để tương thích với các thư viện OTA và build tools mới
       - name: Setup Java
-        uses: actions/setup-java@v3
+        uses: uses/setup-java@v3
         with:
           distribution: 'temurin'
           java-version: '17'
@@ -30,18 +30,22 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Set build number
-        run: echo "BUILD_NUMBER=${GITHUB_RUN_NUMBER}" >> $GITHUB_ENV
+      # Lấy số version từ pubspec.yaml (ví dụ 1.0.0)
+      - name: Read version from pubspec.yaml
+        id: read_version
+        run: |
+          MAIN_VERSION=$(grep '^version:' pubspec.yaml | awk '{print $2}' | cut -d+ -f1)
+          echo "MAIN_VERSION=$MAIN_VERSION" >> $GITHUB_ENV
 
+      # BUILD SPLIT APK: Tách riêng các file theo cấu trúc CPU (arm64, v7a, x86)
       - name: Build APK
-        run: flutter build apk --release --build-number=${GITHUB_RUN_NUMBER}
+        run: flutter build apk --release --split-per-abi --build-number=${GITHUB_RUN_NUMBER}
 
-      # Sign APK với Keystore từ Secrets
+      # Ký toàn bộ các file APK đã tách
       - name: Sign APK
         id: sign_app
         uses: r0adkll/sign-android-release@v1
         with:
-          # Lưu ý: Nếu bạn đổi buildDir trong Gradle, hãy kiểm tra kỹ đường dẫn này
           releaseDirectory: build/app/outputs/flutter-apk
           signingKeyBase64: ${{ secrets.KEYSTORE_BASE64 }}
           alias: ${{ secrets.KEY_ALIAS }}
@@ -50,18 +54,20 @@ jobs:
         env:
           BUILD_TOOLS_VERSION: "34.0.0"
 
-      - name: Read version from pubspec.yaml
-        id: read_version
-        run: |
-          MAIN_VERSION=$(grep '^version:' pubspec.yaml | awk '{print $2}' | cut -d+ -f1)
-          echo "MAIN_VERSION=$MAIN_VERSION" >> $GITHUB_ENV
-
-      - name: Create GitHub Release with tag
+      # Upload TẤT CẢ các bản APK đã ký lên GitHub Release
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
           tag_name: "v${{ env.MAIN_VERSION }}+${{ github.run_number }}"
           name: "v${{ env.MAIN_VERSION }}+${{ github.run_number }}"
-          body: "Commit message: ${{ github.event.head_commit.message }}"
-          files: ${{ steps.sign_app.outputs.signedReleaseFile }}
+          body: |
+            ## Automated Release
+            - **Version:** ${{ env.MAIN_VERSION }}
+            - **Build Number:** ${{ github.run_number }}
+            - **Commit:** ${{ github.event.head_commit.message }}
+            
+            *Lưu ý: Vui lòng chọn đúng bản APK phù hợp với kiến trúc CPU của thiết bị.*
+          # Wildcard '*' giúp lấy tất cả các bản v7a, arm64, x86 đã ký
+          files: build/app/outputs/flutter-apk/*-signed.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
