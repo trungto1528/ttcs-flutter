@@ -90,14 +90,14 @@ class _LibraryPageState extends State<LibraryPage> with RouteAware {
   Widget build(BuildContext context) {
     if (loading) {
       return Scaffold(
-        appBar: AppBar(title: const Text("Thư viện")),
+        appBar: AppBar(title: const Text("Bookmarks")),
         body: const Center(child: CircularProgressIndicator()),
       );
     }
 
     if (userId == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text("Thư viện")),
+        appBar: AppBar(title: const Text("Bookmarks")),
         body: Center(
           child: Text(
             "Bạn cần đăng nhập để xem truyện đã đánh dấu",
@@ -110,7 +110,7 @@ class _LibraryPageState extends State<LibraryPage> with RouteAware {
 
     if (library.isEmpty) {
       return Scaffold(
-        appBar: AppBar(title: const Text("Thư viện")),
+        appBar: AppBar(title: const Text("Bookmarks")),
         body: Center(
           child: Text(
             "Bạn chưa lưu truyện nào",
@@ -121,7 +121,7 @@ class _LibraryPageState extends State<LibraryPage> with RouteAware {
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text("Thư viện")),
+      appBar: AppBar(title: const Text("Bookmarks")),
       body: ListView.builder(
         itemCount: library.length,
         itemBuilder: (_, i) {

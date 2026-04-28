@@ -91,9 +91,8 @@ class _CrawlScreenState extends State<CrawlScreen> {
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setModalState) {
-            // Tự động làm mới danh sách mỗi 3 giây
             Timer? localTimer;
-            localTimer = Timer.periodic(const Duration(seconds: 3), (timer) {
+            localTimer = Timer.periodic(const Duration(seconds: 2), (timer) {
               if (context.mounted) setModalState(() {});
             });
 
@@ -189,7 +188,7 @@ class _CrawlScreenState extends State<CrawlScreen> {
             return FutureBuilder(
               future: crawlService.getAllTasks(),
               builder: (context, snapshot) {
-                final allTasks = snapshot.data as Map<String, dynamic>?;
+                final allTasks = snapshot.data;
                 final task = allTasks?[taskId];
 
                 if (task == null) {
@@ -298,7 +297,7 @@ class _CrawlScreenState extends State<CrawlScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.assignment_outlined),
-            onPressed: _showAllTasksSheet, // Hàm mới để xem tất cả task
+            onPressed: _showAllTasksSheet,
             tooltip: "Tiến độ cào",
           ),
           if (data != null)
@@ -322,7 +321,7 @@ class _CrawlScreenState extends State<CrawlScreen> {
             child: TextField(
               controller: controller,
               decoration: InputDecoration(
-                hintText: "Paste link truyện nhà hako vào(docln hoặc ln.hako)",
+                hintText: "docln.net/docln.sbs/ln.hako.vn",
                 prefixIcon: const Icon(Icons.link),
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                 suffixIcon: IconButton(

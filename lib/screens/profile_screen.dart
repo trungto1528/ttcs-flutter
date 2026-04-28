@@ -96,7 +96,7 @@ class _ProfilePageState extends State<ProfilePage> {
               //  DARK / LIGHT MODE
               ListTile(
                 leading: const Icon(Icons.dark_mode),
-                title: const Text("Chế độ giao diện"),
+                title: const Text("Giao diện"),
                 trailing: DropdownButton<AppThemeMode>(
                   value: widget.currentMode,
                   underline: const SizedBox(),

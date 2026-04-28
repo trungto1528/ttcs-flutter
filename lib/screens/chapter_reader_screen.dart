@@ -13,7 +13,7 @@ import '../services/story_fetcher.dart';
 class ChapterReaderScreen extends StatefulWidget {
   final int chapterId;
   final int storyId;
-  final int createdById; // 👈 THÊM
+  final int createdById;
 
   const ChapterReaderScreen({
     super.key,
@@ -220,7 +220,7 @@ class _ChapterReaderScreenState extends State<ChapterReaderScreen> {
                             overflow: TextOverflow.ellipsis,
                           ),
                           const SizedBox(height: 6),
-                          Text("Chương $lastChapterNumber"),
+                          Text("Ch. $lastChapterNumber"),
                         ],
                       ),
                     ),
@@ -233,7 +233,7 @@ class _ChapterReaderScreenState extends State<ChapterReaderScreen> {
               final isCurrent = c["id"] == currentChapterId;
 
               return ListTile(
-                title: Text("Chương ${c["chapterNumber"]}:\n ${c['title']}"),
+                title: Text("Ch. ${c["chapterNumber"]}:\n ${c['title']}"),
                 selected: isCurrent,
                 onTap: () {
                   Navigator.pop(context);
@@ -251,7 +251,7 @@ class _ChapterReaderScreenState extends State<ChapterReaderScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          "Chương ${chapter!['chapterNumber']}: ${chapter!["title"]}",
+          "${chapter!["title"]}",
         ),
       ),
       body: ListView(

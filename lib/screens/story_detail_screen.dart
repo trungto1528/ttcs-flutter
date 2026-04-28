@@ -218,7 +218,7 @@ class _StoryDetailScreenState extends State<StoryDetailScreen> {
                         ),
                         const SizedBox(height: 6),
                         Text("Tác giả: ${story['author'] ?? ""}"),
-                        Text("Đăng bởi: ${story['createdByName'] ?? ""}"),
+                        Text("Tạo bởi: ${story['createdByName'] ?? ""}"),
                       ],
                     ),
                   ),
@@ -248,41 +248,60 @@ class _StoryDetailScreenState extends State<StoryDetailScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
                     child: Text(
-                      "Chương $chapterNumber",
+                      "Ch. $chapterNumber",
                       style: const TextStyle(
-                        fontSize: 18,
+                        fontSize: 16,
                         fontWeight: FontWeight.bold,
-                        color: Colors.blue,
+                        color: Colors.grey,
                       ),
                     ),
                   ),
+
+                  // Danh sách các bản dịch/nguồn của chương đó
                   ...list.map((c) {
-                    return ListTile(
-                      title: Text(
-                        c["title"] ?? "",
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      subtitle: Text(
-                        " - ${c["createdByName"] ?? ""} (${c['createdById'] ?? ""})",
-                      ),
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => ChapterReaderScreen(
-                              chapterId: c["id"],
-                              storyId: widget.storyId,
-                              createdById: c["createdById"],
-                            ),
+                    return Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).cardColor,
+                        borderRadius: BorderRadius.circular(12), // Bo góc
+                        border: Border.all(color: Colors.grey.shade200), // Viền nhạt
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.03),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
                           ),
-                        );
-                      },
+                        ],
+                      ),
+                      child: ListTile(
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                        leading: const Icon(Icons.menu_book_rounded, color: Colors.blue), // Icon đại diện
+                        title: Text(
+                          c["title"] ?? "Không có tiêu đề",
+                          style: const TextStyle(fontWeight: FontWeight.w600),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        subtitle: Text(
+                          "Người đăng: ${c["createdByName"]} (${c['id']})",
+                          style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+                        ),
+                        trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 16),
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => ChapterReaderScreen(
+                                chapterId: c["id"],
+                                storyId: widget.storyId,
+                                createdById: c["createdById"],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
                     );
                   }),
                 ],

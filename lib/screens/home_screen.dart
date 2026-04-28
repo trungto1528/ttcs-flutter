@@ -84,8 +84,6 @@ class _HomePageState extends State<HomePage> with RouteAware {
         storedCreatedById = user.lastReadCreatedById;
       }
     }
-    print('home:$storedStoryId,$storedChapterId,$storedCreatedById');
-
     if (storedStoryId != null && storedChapterId != null && storedCreatedById != null) {
       final storyData = await StoryFetcher().fetchStory(storedStoryId);
       storyTitle = storyData['title'];
