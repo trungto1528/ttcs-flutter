@@ -156,7 +156,7 @@ class _AdminStoryManagerScreenState
                           const SizedBox(height: 4),
 
                           Text(
-                            "Tác giả: ${story['author'] ?? "Unknown"}",
+                            "Tạo bởi: ${story['createdByName'] ?? "Unknown"}",
                             style: TextStyle(
                               fontSize: 12,
                               color: Colors.grey.shade600,
