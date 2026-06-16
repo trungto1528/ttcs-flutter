@@ -159,4 +159,16 @@ class StoryFetcher {
     }
     return null;
   }
+  //latestupdated
+  Future<List<dynamic>> fetchLatestStories() async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/stories/latest-updated'),
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    }
+
+    throw Exception('Failed');
+  }
 }

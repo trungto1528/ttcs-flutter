@@ -5,6 +5,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
+import 'package:novel_app/screens/user_management.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/User.dart';
@@ -398,21 +399,39 @@ class _ProfilePageState extends State<ProfilePage> {
             }),
 
             // ================= ADMIN ONLY =================
+            // ================= ADMIN ONLY =================
             if (isAdmin)
               _tile(Icons.admin_panel_settings, "Quản lý tất cả truyện", () {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => AdminStoryManagerScreen(adminId: user!.id),
+                    builder: (_) => AdminStoryManagerScreen(
+                      adminId: user!.id,
+                    ),
                   ),
                 );
               }),
+
+            if (isAdmin)
+              _tile(Icons.people, "Quản lý người dùng", () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => AdminUserManagerScreen(
+                      adminId: user!.id,
+                    ),
+                  ),
+                );
+              }),
+
             if (isAdmin)
               _tile(Icons.cloud_download, "Nhập truyện từ URL (Crawl)", () {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => CrawlScreen(userId:user!.id),
+                    builder: (_) => CrawlScreen(
+                      userId: user!.id,
+                    ),
                   ),
                 );
               }),

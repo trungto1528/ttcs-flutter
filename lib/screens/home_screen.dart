@@ -5,6 +5,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:novel_app/screens/chapter_reader_screen.dart';
 import 'package:novel_app/screens/search_screen.dart';
+import 'package:novel_app/screens/story_detail_screen.dart';
 import 'package:novel_app/services/chapter_fetcher.dart';
 import 'package:novel_app/services/story_fetcher.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -24,6 +25,7 @@ class _HomePageState extends State<HomePage> with RouteAware {
   String? lastStoryTitle;
   int? lastChapterNumber;
   late List storyList;
+  late Future<List<dynamic>> latestStoriesFuture;
   bool isSearching = false;
   String keyword = "";
   Timer? _debounce;
@@ -34,6 +36,7 @@ class _HomePageState extends State<HomePage> with RouteAware {
   void initState() {
     super.initState();
     _loadLastRead();
+    latestStoriesFuture = StoryFetcher().fetchLatestStories();
   }
 
   @override
@@ -76,15 +79,19 @@ class _HomePageState extends State<HomePage> with RouteAware {
     if (storedUser != null) {
       var user = User.fromJson(jsonDecode(storedUser));
       uid = user.id;
-      storedUser =await Auth().fetchUser(uid);
+      storedUser = await Auth().fetchUser(uid);
       user = User.fromJson(jsonDecode(storedUser));
-      if (user.lastReadStoryId != -1 && user.lastReadChapterId != -1&& user.lastReadCreatedById != -1) {
+      if (user.lastReadStoryId != -1 &&
+          user.lastReadChapterId != -1 &&
+          user.lastReadCreatedById != -1) {
         storedStoryId = user.lastReadStoryId;
         storedChapterId = user.lastReadChapterId;
         storedCreatedById = user.lastReadCreatedById;
       }
     }
-    if (storedStoryId != null && storedChapterId != null && storedCreatedById != null) {
+    if (storedStoryId != null &&
+        storedChapterId != null &&
+        storedCreatedById != null) {
       final storyData = await StoryFetcher().fetchStory(storedStoryId);
       storyTitle = storyData['title'];
       cover = storyData['coverUrl'];
@@ -139,7 +146,9 @@ class _HomePageState extends State<HomePage> with RouteAware {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        if (lastStoryId != null && lastChapterId != null && lastReadCreatedById!=null) ...[
+        if (lastStoryId != null &&
+            lastChapterId != null &&
+            lastReadCreatedById != null) ...[
           const SizedBox(width: 8),
           Text(
             "Đọc tiếp",
@@ -197,6 +206,81 @@ class _HomePageState extends State<HomePage> with RouteAware {
           ),
         ],
         const SizedBox(height: 24),
+        Text(
+          "Mới cập nhật",
+          style: TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+
+        const SizedBox(height: 12),
+
+        FutureBuilder<List<dynamic>>(
+          future: latestStoriesFuture,
+          builder: (context, snapshot) {
+
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(20),
+                  child: CircularProgressIndicator(),
+                ),
+              );
+            }
+
+            if (snapshot.hasError) {
+              return const Text("Không thể tải dữ liệu");
+            }
+
+            final stories = snapshot.data ?? [];
+
+            return Column(
+              children: stories.map((story) {
+
+                return Card(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  child: ListTile(
+                    contentPadding: const EdgeInsets.all(8),
+
+                    leading: CachedNetworkImage(
+                      imageUrl:
+                      "$baseCoverUrl/${story['coverUrl']}",
+                      width: 60,
+                      fit: BoxFit.cover,
+                    ),
+
+                    title: Text(
+                      story['title'],
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+
+                    subtitle: Column(
+                      crossAxisAlignment:
+                      CrossAxisAlignment.start,
+                      children: [
+                        Text(story['author']),
+                        Text(
+                          "Chương ${story['latestChapter']}",
+                        ),
+                      ],
+                    ),
+
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => StoryDetailScreen(storyId: story['id']),
+                        ),
+                      );
+                    },
+                  ),
+                );
+              }).toList(),
+            );
+          },
+        ),
       ],
     );
   }

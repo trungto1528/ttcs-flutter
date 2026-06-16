@@ -35,12 +35,87 @@ class _AdminStoryManagerScreenState
       final data =
       await StoryFetcher().getAllStories(widget.adminId);
 
+      data.sort((a, b) {
+        if (a['status'] == 'PENDING' &&
+            b['status'] != 'PENDING') {
+          return -1;
+        }
+
+        if (a['status'] != 'PENDING' &&
+            b['status'] == 'PENDING') {
+          return 1;
+        }
+
+        return 0;
+      });
+
       setState(() {
         stories = data;
         isLoading = false;
       });
     } catch (e) {
       setState(() => isLoading = false);
+    }
+  }
+  Future<void> _viewChapter(int chapterId) async {
+    try {
+      final chapter =
+      await ChapterFetcher().fetchChapter(chapterId);
+
+      if (!mounted) return;
+
+      showDialog(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: Text(
+            "Chương ${chapter['chapterNumber']}: ${chapter['title']}",
+          ),
+          content: SizedBox(
+            width: 700,
+            height: 500,
+            child: ListView(
+              children: (chapter['blocks'] as List)
+                  .map((block) {
+
+                if (block["type"] == "text") {
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 8,
+                    ),
+                    child: Text(block["data"]),
+                  );
+                }
+
+                if (block["type"] == "image") {
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 8,
+                    ),
+                    child: CachedNetworkImage(
+                      imageUrl:
+                      "http://140.245.45.167:7778/chapter/${block["data"]}",
+                    ),
+                  );
+                }
+
+                return const SizedBox();
+              }).toList(),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () =>
+                  Navigator.pop(context),
+              child: const Text("Đóng"),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(
+        SnackBar(content: Text("$e")),
+      );
     }
   }
 
@@ -50,7 +125,24 @@ class _AdminStoryManagerScreenState
           .fetchStoryAdmin(storyId, widget.adminId);
 
       setState(() {
-        storyChapters[storyId] = data?['chapters'] ?? [];
+        final chapters = List.from(data?['chapters'] ?? []);
+
+        chapters.sort((a, b) {
+          if (a['status'] == 'PENDING' &&
+              b['status'] != 'PENDING') {
+            return -1;
+          }
+
+          if (a['status'] != 'PENDING' &&
+              b['status'] == 'PENDING') {
+            return 1;
+          }
+
+          return a['chapterNumber']
+              .compareTo(b['chapterNumber']);
+        });
+
+        storyChapters[storyId] = chapters;
       });
     } catch (e) {
       print(e);
@@ -62,6 +154,71 @@ class _AdminStoryManagerScreenState
   Future<void> _approveStory(int id) async {
     await StoryFetcher().approveStory(widget.adminId, id);
     _loadStories();
+  }
+  Future<void> _deleteChapter(
+      int storyId,
+      int chapterId,
+      ) async {
+    try {
+      await ChapterFetcher().deleteChapter(
+        chapterId,
+        widget.adminId
+      );
+
+      await _loadChapters(storyId);
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Đã xoá chương"),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString()),
+        ),
+      );
+    }
+  }
+  void _confirmDeleteChapter(
+      int storyId,
+      int chapterId,
+      ) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text("Xoá chương"),
+        content: const Text(
+          "Bạn có chắc muốn xoá chương này?",
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Huỷ"),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+
+              _deleteChapter(
+                storyId,
+                chapterId,
+              );
+            },
+            child: const Text(
+              "Xoá",
+              style: TextStyle(
+                color: Colors.red,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _rejectStory(int id) async {
@@ -241,37 +398,59 @@ class _AdminStoryManagerScreenState
       final status = c['status'];
 
       return Container(
-        margin:
-        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        margin: const EdgeInsets.symmetric(
+          horizontal: 10,
+          vertical: 4,
+        ),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(8),
           color: Colors.grey.withValues(alpha: 0.05),
         ),
         child: ListTile(
+          onTap: () => _viewChapter(c['id']),
           title: Text(
             "Chương ${c['chapterNumber']}: ${c['title']}",
-            style: const TextStyle(fontWeight: FontWeight.w500),
+            style: const TextStyle(
+              fontWeight: FontWeight.w500,
+            ),
           ),
           subtitle: Text(c['createdByName'] ?? ""),
-          trailing: Row(
-            mainAxisSize: MainAxisSize.min,
+          trailing: Wrap(
+            spacing: 4,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               buildStatusChip(status),
+
               if (status == "PENDING") ...[
-                const SizedBox(width: 6),
                 IconButton(
-                  icon: const Icon(Icons.check,
-                      color: Colors.green),
+                  icon: const Icon(
+                    Icons.check,
+                    color: Colors.green,
+                  ),
                   onPressed: () =>
                       _approveChapter(storyId, c['id']),
                 ),
+
                 IconButton(
-                  icon: const Icon(Icons.close,
-                      color: Colors.red),
+                  icon: const Icon(
+                    Icons.close,
+                    color: Colors.orange,
+                  ),
                   onPressed: () =>
                       _rejectChapter(storyId, c['id']),
                 ),
-              ]
+              ],
+
+              IconButton(
+                icon: const Icon(
+                  Icons.delete,
+                  color: Colors.red,
+                ),
+                onPressed: () => _confirmDeleteChapter(
+                  storyId,
+                  c['id'],
+                ),
+              ),
             ],
           ),
         ),
