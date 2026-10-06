@@ -122,7 +122,7 @@ class _SearchScreenState extends State<SearchScreen> {
                     width: 70,
                     height: 105,
                     fit: BoxFit.cover,
-                    imageUrl: "http://140.245.45.167:7778/cover/${s.coverUrl}",
+                    imageUrl: "http://v1.trungto.qd.je:7778/cover/${s.coverUrl}",
                   ),
                 ),
                 SizedBox(width: 12),

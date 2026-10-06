@@ -35,7 +35,7 @@ class ProfilePage extends StatefulWidget {
 class _ProfilePageState extends State<ProfilePage> {
   User? user;
 
-  final baseAvatar = "http://140.245.45.167:7778/avatar";
+  final baseAvatar = "http://v1.trungto.qd.je:7778/avatar";
 
   @override
   void initState() {
@@ -164,7 +164,7 @@ class _ProfilePageState extends State<ProfilePage> {
     try {
       var request = http.MultipartRequest(
         "POST",
-        Uri.parse("http://140.245.45.167:7777/api/users/upload-avatar"),
+        Uri.parse("http://v1.trungto.qd.je:7777/api/users/upload-avatar"),
       );
 
       request.files.add(await http.MultipartFile.fromPath("file", file.path));
@@ -222,7 +222,7 @@ class _ProfilePageState extends State<ProfilePage> {
     try {
       final res = await http.post(
         Uri.parse(
-          "http://140.245.45.167:7777/api/users/${user!.id}/displayName",
+          "http://v1.trungto.qd.je:7777/api/users/${user!.id}/displayName",
         ),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({"displayName": newName}),

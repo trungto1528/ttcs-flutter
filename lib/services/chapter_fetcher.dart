@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 
 class ChapterFetcher {
-  final String baseUrl = 'http://140.245.45.167:7777/api';
+  final String baseUrl = 'http://v1.trungto.qd.je:7777/api';
 
   // ================= FETCH CHAPTER =================
   Future<Map<String, dynamic>> fetchChapter(int chapterId) async {

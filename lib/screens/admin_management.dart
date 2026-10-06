@@ -20,7 +20,7 @@ class _AdminStoryManagerScreenState
   Map<int, List> storyChapters = {};
   bool isLoading = true;
 
-  final baseCoverUrl = "http://140.245.45.167:7778/cover/";
+  final baseCoverUrl = "http://v1.trungto.qd.je:7778/cover/";
 
   @override
   void initState() {
@@ -93,7 +93,7 @@ class _AdminStoryManagerScreenState
                     ),
                     child: CachedNetworkImage(
                       imageUrl:
-                      "http://140.245.45.167:7778/chapter/${block["data"]}",
+                      "http://v1.trungto.qd.je:7778/chapter/${block["data"]}",
                     ),
                   );
                 }

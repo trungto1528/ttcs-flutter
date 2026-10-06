@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class CrawlService {
-  static const String baseUrl = "http://140.245.45.167:7777/api/crawler";
+  static const String baseUrl = "http://v1.trungto.qd.je:7777/api/crawler";
 
   Future<Map<String, dynamic>> crawlStory(String url) async {
     final res = await http.post(

@@ -58,7 +58,7 @@ class _StoryChapterScreenState extends State<StoryChapterScreen>
 
   final List<ContentBlock> _blocks = [ContentBlock.text()];
 
-  final baseCoverUrl = 'http://140.245.45.167:7778/cover/';
+  final baseCoverUrl = 'http://v1.trungto.qd.je:7778/cover/';
 
   @override
   void initState() {

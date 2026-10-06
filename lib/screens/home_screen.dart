@@ -29,7 +29,7 @@ class _HomePageState extends State<HomePage> with RouteAware {
   bool isSearching = false;
   String keyword = "";
   Timer? _debounce;
-  final baseCoverUrl = 'http://140.245.45.167:7778/cover';
+  final baseCoverUrl = 'http://v1.trungto.qd.je:7778/cover';
   String? coverUrl;
 
   @override

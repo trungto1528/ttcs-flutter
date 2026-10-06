@@ -31,7 +31,7 @@ class _StoryDetailScreenState extends State<StoryDetailScreen> {
 
   List chapters = [];
 
-  final baseCoverUrl = 'http://140.245.45.167:7778/cover/';
+  final baseCoverUrl = 'http://v1.trungto.qd.je:7778/cover/';
 
   @override
   void initState() {
