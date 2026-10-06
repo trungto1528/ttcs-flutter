@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class UserFetcher {
-  final String baseUrl = "http://v1.trungto.qd.je:7777/api";
+  final String baseUrl = "http://v2.trungto.qd.je:7777/api";
 
   Future<List<dynamic>> getAllUsers(int adminId) async {
     final response = await http.get(

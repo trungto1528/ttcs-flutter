@@ -15,7 +15,7 @@ class _MyStoriesScreenState extends State<MyStoriesScreen> {
   List stories = [];
   bool isLoading = true;
 
-  final baseCoverUrl = "http://v1.trungto.qd.je:7778/cover/";
+  final baseCoverUrl = "http://v2.trungto.qd.je:7778/cover/";
 
   int? expandedIndex;
 

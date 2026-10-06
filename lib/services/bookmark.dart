@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class Bookmark {
-  final baseUrl='http://v1.trungto.qd.je:7777/api/bookmarks';
+  final baseUrl='http://v2.trungto.qd.je:7777/api/bookmarks';
   Future<void> saveStory(int userId, int storyId) async {
     final res = await http.post(
       Uri.parse('$baseUrl/save'),

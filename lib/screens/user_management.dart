@@ -22,7 +22,7 @@ class _AdminUserManagerScreenState
   bool isLoading = true;
 
   final avatarBaseUrl =
-      "http://v1.trungto.qd.je:7778/avatar";
+      "http://v2.trungto.qd.je:7778/avatar";
 
   @override
   void initState() {

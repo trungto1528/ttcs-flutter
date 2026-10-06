@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 
 class StoryFetcher {
-  final String baseUrl = 'http://v1.trungto.qd.je:7777/api';
+  final String baseUrl = 'http://v2.trungto.qd.je:7777/api';
 
   // ================= FETCH USER =================
   Future<Map<String, dynamic>> fetchStory(int storyId) async {

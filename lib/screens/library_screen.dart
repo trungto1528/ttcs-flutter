@@ -147,7 +147,7 @@ class _LibraryPageState extends State<LibraryPage> with RouteAware {
                       height: 105,
                       fit: BoxFit.cover,
                       imageUrl:
-                          "http://v1.trungto.qd.je:7778/cover/${s.coverUrl}",
+                          "http://v2.trungto.qd.je:7778/cover/${s.coverUrl}",
                     ),
                   ),
                   SizedBox(width: 12),

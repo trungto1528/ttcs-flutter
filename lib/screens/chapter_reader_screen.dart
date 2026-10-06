@@ -42,9 +42,9 @@ class _ChapterReaderScreenState extends State<ChapterReaderScreen> {
 
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
-  final baseUrl = "http://v1.trungto.qd.je:7777/api";
-  final illusUrl = "http://v1.trungto.qd.je:7778/chapter/";
-  final baseCoverUrl = 'http://v1.trungto.qd.je:7778/cover/';
+  final baseUrl = "http://v2.trungto.qd.je:7777/api";
+  final illusUrl = "http://v2.trungto.qd.je:7778/chapter/";
+  final baseCoverUrl = 'http://v2.trungto.qd.je:7778/cover/';
 
   @override
   void initState() {
