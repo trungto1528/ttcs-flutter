@@ -226,18 +226,52 @@ class _ChapterReaderScreenState extends State<ChapterReaderScreen> {
               ),
             ),
 
-            ...chapters.map((c) {
-              final isCurrent = c["id"] == currentChapterId;
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              child: GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 3,
+                  crossAxisSpacing: 8,
+                  mainAxisSpacing: 8,
+                  childAspectRatio: 2.2,
+                ),
+                itemCount: chapters.length,
+                itemBuilder: (context, index) {
+                  final c = chapters[index];
+                  final isCurrent = c["id"] == currentChapterId;
 
-              return ListTile(
-                title: Text("Ch. ${c["chapterNumber"]}:\n ${c['title']}"),
-                selected: isCurrent,
-                onTap: () {
-                  Navigator.pop(context);
-                  _fetchChapter(c["id"]);
+                  return Material(
+                    color: isCurrent
+                        ? Theme.of(context).colorScheme.primary
+                        : Theme.of(context).cardColor,
+                    borderRadius: BorderRadius.circular(8),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(8),
+                      onTap: () {
+                        Navigator.pop(context);
+                        _fetchChapter(c["id"]);
+                      },
+                      child: Center(
+                        child: Text(
+                          "Ch. ${c["chapterNumber"]}",
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: isCurrent
+                                ? FontWeight.bold
+                                : FontWeight.normal,
+                            color: isCurrent
+                                ? Theme.of(context).colorScheme.onPrimary
+                                : Theme.of(context).textTheme.bodyMedium?.color,
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
                 },
-              );
-            }),
+              ),
+            ),
           ],
         ),
       ),
