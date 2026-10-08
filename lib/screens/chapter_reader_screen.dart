@@ -159,7 +159,7 @@ class _ChapterReaderScreenState extends State<ChapterReaderScreen> {
     if (block["type"] == "image") {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 12),
-        child: CachedNetworkImage(imageUrl: ApiConfig.chapterImage + block['data']),
+        child: CachedNetworkImage(imageUrl: '${ApiConfig.chapterImage}/ ${block['data']}'),
       );
     }
 

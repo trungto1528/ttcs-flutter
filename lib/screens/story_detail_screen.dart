@@ -199,7 +199,7 @@ class _StoryDetailScreenState extends State<StoryDetailScreen> {
                   ClipRRect(
                     borderRadius: BorderRadius.circular(6),
                     child: CachedNetworkImage(
-                      imageUrl: ApiConfig.coverImage + (story['coverUrl'] ?? ""),
+                      imageUrl: '${ApiConfig.coverImage}/${story['coverUrl'] ?? ''}',
                       height: 180,
                       width: 120,
                       fit: BoxFit.cover,

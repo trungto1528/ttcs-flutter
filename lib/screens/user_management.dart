@@ -132,7 +132,7 @@ class _AdminUserManagerScreenState
                     CircleAvatar(
                       radius: 24,
                       backgroundImage: CachedNetworkImageProvider(
-                        "${ApiConfig.avatarImage}${user['avatarUrl']}",
+                        "${ApiConfig.avatarImage}/${user['avatarUrl']}",
                       ),
                     ),
 

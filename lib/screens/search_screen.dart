@@ -124,7 +124,7 @@ class _SearchScreenState extends State<SearchScreen> {
                     width: 70,
                     height: 105,
                     fit: BoxFit.cover,
-                    imageUrl: "${ApiConfig.coverImage}${s.coverUrl}",
+                    imageUrl: "${ApiConfig.coverImage}/${s.coverUrl}",
                   ),
                 ),
                 SizedBox(width: 12),

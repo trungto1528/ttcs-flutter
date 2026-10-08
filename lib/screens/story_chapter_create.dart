@@ -355,7 +355,7 @@ class _StoryChapterScreenState extends State<StoryChapterScreen>
                             width: 60,
                             height: 90,
                             fit: BoxFit.cover,
-                            imageUrl: ApiConfig.coverImage + (s['coverUrl'] ?? ""),
+                            imageUrl: '${ApiConfig.coverImage}/${s['coverUrl'] ?? ''}',
                           ),
                           const SizedBox(width: 10),
                           Expanded(
@@ -396,7 +396,7 @@ class _StoryChapterScreenState extends State<StoryChapterScreen>
                   width: 70,
                   height: 100,
                   fit: BoxFit.cover,
-                  imageUrl: ApiConfig.coverImage + (_selectedStory!['coverUrl'] ?? ""),
+                  imageUrl: '${ApiConfig.coverImage}/${(_selectedStory!['coverUrl'] ?? "")}',
                 ),
                 const SizedBox(width: 12),
                 Expanded(

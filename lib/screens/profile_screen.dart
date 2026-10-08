@@ -265,7 +265,7 @@ class _ProfilePageState extends State<ProfilePage> {
           onTap: _changeAvatar,
           child: ClipOval(
             child: CachedNetworkImage(
-              imageUrl: "${ApiConfig.image}${user!.avatarUrl}",
+              imageUrl: "${ApiConfig.image}/${user!.avatarUrl}",
               width: 72,
               height: 72,
               fit: BoxFit.cover,

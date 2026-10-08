@@ -166,7 +166,7 @@ class _MyStoriesScreenState extends State<MyStoriesScreen> {
             leading: ClipRRect(
               borderRadius: BorderRadius.circular(8),
               child: Image.network(
-                ApiConfig.coverImage + (story['coverUrl'] ?? ""),
+                '${ApiConfig.coverImage}/${story['coverUrl'] ?? ''}',
                 width: 50,
                 height: 75,
                 fit: BoxFit.cover,

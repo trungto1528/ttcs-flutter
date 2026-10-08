@@ -92,7 +92,7 @@ class _AdminStoryManagerScreenState
                     ),
                     child: CachedNetworkImage(
                       imageUrl:
-                      "${ApiConfig.chapterImage}${block["data"]}",
+                      "${ApiConfig.chapterImage}/${block["data"]}",
                     ),
                   );
                 }
@@ -279,7 +279,7 @@ class _AdminStoryManagerScreenState
                         height: 90,
                         fit: BoxFit.cover,
                         imageUrl:
-                        "${ApiConfig.coverImage}${story['coverUrl']}",
+                        "${ApiConfig.coverImage}/${story['coverUrl']}",
                         placeholder: (_, __) => const SizedBox(
                           width: 60,
                           height: 90,

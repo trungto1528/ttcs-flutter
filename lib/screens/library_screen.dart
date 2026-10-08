@@ -148,7 +148,7 @@ class _LibraryPageState extends State<LibraryPage> with RouteAware {
                       height: 105,
                       fit: BoxFit.cover,
                       imageUrl:
-                          "${ApiConfig.coverImage}${s.coverUrl}",
+                          "${ApiConfig.coverImage}/${s.coverUrl}",
                     ),
                   ),
                   SizedBox(width: 12),
