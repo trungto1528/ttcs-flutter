@@ -17,7 +17,7 @@ class CrawlScreen extends StatefulWidget {
 }
 
 class _CrawlScreenState extends State<CrawlScreen> {
-  final TextEditingController controller =
+  final TextEditingController searchController =
   TextEditingController();
 
   final CrawlService crawlService =
@@ -25,30 +25,96 @@ class _CrawlScreenState extends State<CrawlScreen> {
 
   Map<String, dynamic>? data;
 
+  List<Map<String, dynamic>> searchResults = [];
+
   bool loading = false;
+  bool searching = false;
 
   Timer? _progressTimer;
 
   @override
   void dispose() {
     _progressTimer?.cancel();
-    controller.dispose();
+    searchController.dispose();
     super.dispose();
   }
 
   // =========================================================
-  // CRAWL
+  // SEARCH
   // =========================================================
 
-  Future<void> crawl() async {
-    final url = controller.text.trim();
+  Future<void> searchStories() async {
+    final keyword =
+    searchController.text.trim();
 
-    if (url.isEmpty) {
+    if (keyword.isEmpty) {
       _showSnackBar(
-        "Vui lòng nhập URL truyện",
+        "Vui lòng nhập tên truyện",
       );
       return;
     }
+
+    FocusScope.of(context).unfocus();
+
+    setState(() {
+      searching = true;
+      searchResults = [];
+      data = null;
+    });
+
+    try {
+      final results =
+      await crawlService.searchStories(
+        keyword,
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        searchResults = results;
+      });
+
+      if (results.isEmpty) {
+        _showSnackBar(
+          "Không tìm thấy truyện",
+        );
+      }
+    } catch (e) {
+      if (!mounted) {
+        return;
+      }
+
+      _showSnackBar(
+        "Lỗi tìm truyện: $e",
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          searching = false;
+        });
+      }
+    }
+  }
+
+  // =========================================================
+  // SELECT SEARCH RESULT
+  // =========================================================
+
+  Future<void> selectSearchResult(
+      Map<String, dynamic> result) async {
+    final url =
+        result['url']?.toString().trim() ?? "";
+
+    if (url.isEmpty) {
+      _showSnackBar(
+        "Không có URL truyện",
+      );
+      return;
+    }
+
+    FocusScope.of(context).unfocus();
 
     setState(() {
       loading = true;
@@ -56,15 +122,17 @@ class _CrawlScreenState extends State<CrawlScreen> {
     });
 
     try {
-      final result =
-      await crawlService.crawlStory(url);
+      final resultData =
+      await crawlService.crawlStory(
+        url,
+      );
 
       if (!mounted) {
         return;
       }
 
       setState(() {
-        data = result;
+        data = resultData;
       });
 
       selectAll(true);
@@ -74,7 +142,7 @@ class _CrawlScreenState extends State<CrawlScreen> {
       }
 
       _showSnackBar(
-        "Lỗi crawl: $e",
+        "Lỗi lấy thông tin truyện: $e",
       );
     } finally {
       if (mounted) {
@@ -83,6 +151,17 @@ class _CrawlScreenState extends State<CrawlScreen> {
         });
       }
     }
+  }
+
+  // =========================================================
+  // BACK TO SEARCH
+  // =========================================================
+
+  void backToSearch() {
+    setState(() {
+      data = null;
+      searchResults = [];
+    });
   }
 
   // =========================================================
@@ -120,7 +199,6 @@ class _CrawlScreenState extends State<CrawlScreen> {
 
   List<Map<String, dynamic>>
   get selectedChapters {
-
     if (data == null) {
       return [];
     }
@@ -156,7 +234,6 @@ class _CrawlScreenState extends State<CrawlScreen> {
   Future<void> submit() async {
     if (data == null ||
         selectedChapters.isEmpty) {
-
       _showSnackBar(
         "Vui lòng chọn ít nhất 1 chương",
       );
@@ -229,7 +306,6 @@ class _CrawlScreenState extends State<CrawlScreen> {
             crawlService.getAllTasks(),
             builder:
                 (context, snapshot) {
-
               if (snapshot.connectionState ==
                   ConnectionState.waiting) {
                 return const Center(
@@ -278,7 +354,6 @@ class _CrawlScreenState extends State<CrawlScreen> {
                       tasks.length,
                       itemBuilder:
                           (context, index) {
-
                         final taskId =
                         tasks.keys
                             .elementAt(
@@ -293,7 +368,8 @@ class _CrawlScreenState extends State<CrawlScreen> {
                                 0;
 
                         final int total =
-                            task['total'] ?? 0;
+                            task['total'] ??
+                                0;
 
                         final double progress =
                         total > 0
@@ -386,12 +462,10 @@ class _CrawlScreenState extends State<CrawlScreen> {
                   ),
                   Padding(
                     padding:
-                    const EdgeInsets
-                        .only(
+                    const EdgeInsets.only(
                       bottom: 16,
                     ),
-                    child:
-                    TextButton(
+                    child: TextButton(
                       onPressed: () =>
                           Navigator.pop(
                             context,
@@ -416,8 +490,7 @@ class _CrawlScreenState extends State<CrawlScreen> {
   // =========================================================
 
   void _showProgressSheet(
-      String taskId,
-      ) {
+      String taskId) {
     _progressTimer?.cancel();
 
     showModalBottomSheet(
@@ -435,7 +508,6 @@ class _CrawlScreenState extends State<CrawlScreen> {
         return StatefulBuilder(
           builder:
               (context, setModalState) {
-
             _progressTimer =
                 Timer.periodic(
                   const Duration(
@@ -450,12 +522,10 @@ class _CrawlScreenState extends State<CrawlScreen> {
 
             return FutureBuilder<
                 Map<String, dynamic>>(
-              future:
-              crawlService
+              future: crawlService
                   .getAllTasks(),
               builder:
                   (context, snapshot) {
-
                 if (!snapshot.hasData) {
                   return const SizedBox(
                     height: 220,
@@ -560,7 +630,8 @@ class _CrawlScreenState extends State<CrawlScreen> {
                         style: TextStyle(
                           color: isDone
                               ? message.contains(
-                              "Hoàn thành")
+                            "Hoàn thành",
+                          )
                               ? Colors.green
                               : Colors.red
                               : Colors.blue,
@@ -646,13 +717,141 @@ class _CrawlScreenState extends State<CrawlScreen> {
   }
 
   // =========================================================
+  // SEARCH RESULTS
+  // =========================================================
+
+  Widget _buildSearchResults() {
+    if (searching) {
+      return const Expanded(
+        child: Center(
+          child:
+          CircularProgressIndicator(),
+        ),
+      );
+    }
+
+    if (searchResults.isEmpty) {
+      return const Expanded(
+        child: Center(
+          child: Text(
+            "Nhập tên truyện để tìm kiếm",
+          ),
+        ),
+      );
+    }
+
+    return Expanded(
+      child: ListView.separated(
+        padding:
+        const EdgeInsets.all(12),
+        itemCount:
+        searchResults.length,
+        separatorBuilder: (_, __) =>
+        const SizedBox(
+          height: 8,
+        ),
+        itemBuilder:
+            (context, index) {
+          final result =
+          searchResults[index];
+
+          final title =
+              result['title']
+                  ?.toString() ??
+                  "";
+
+          final cover =
+              result['cover']
+                  ?.toString() ??
+                  "";
+
+          return Card(
+            clipBehavior:
+            Clip.antiAlias,
+            child: ListTile(
+              contentPadding:
+              const EdgeInsets.all(
+                8,
+              ),
+              leading: ClipRRect(
+                borderRadius:
+                BorderRadius.circular(
+                  6,
+                ),
+                child: cover.isNotEmpty
+                    ? Image.network(
+                  cover,
+                  width: 60,
+                  height: 85,
+                  fit: BoxFit.cover,
+                  errorBuilder:
+                      (
+                      _,
+                      __,
+                      ___,
+                      ) {
+                    return _searchCoverPlaceholder();
+                  },
+                )
+                    : _searchCoverPlaceholder(),
+              ),
+              title: Text(
+                title,
+                maxLines: 2,
+                overflow:
+                TextOverflow.ellipsis,
+                style:
+                const TextStyle(
+                  fontWeight:
+                  FontWeight.w600,
+                ),
+              ),
+              subtitle:
+              const Padding(
+                padding:
+                EdgeInsets.only(
+                  top: 6,
+                ),
+                child: Text(
+                  "MangaRead",
+                ),
+              ),
+              trailing:
+              const Icon(
+                Icons.chevron_right,
+              ),
+              onTap: loading
+                  ? null
+                  : () =>
+                  selectSearchResult(
+                    result,
+                  ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _searchCoverPlaceholder() {
+    return Container(
+      width: 60,
+      height: 85,
+      color: Colors.grey[300],
+      child: const Icon(
+        Icons.image_not_supported,
+        color: Colors.grey,
+      ),
+    );
+  }
+
+  // =========================================================
   // BUILD
   // =========================================================
 
   @override
   Widget build(
-      BuildContext context,
-      ) {
+      BuildContext context) {
     final volumes =
         data?['volumes'] as List? ??
             [];
@@ -675,12 +874,13 @@ class _CrawlScreenState extends State<CrawlScreen> {
           if (data != null)
             IconButton(
               icon: const Icon(
-                Icons.refresh,
+                Icons.search,
               ),
               tooltip:
-              "Cào lại",
-              onPressed:
-              loading ? null : crawl,
+              "Tìm truyện khác",
+              onPressed: loading
+                  ? null
+                  : backToSearch,
             ),
         ],
       ),
@@ -690,8 +890,7 @@ class _CrawlScreenState extends State<CrawlScreen> {
           ? null
           : FloatingActionButton
           .extended(
-        onPressed:
-        submit,
+        onPressed: submit,
         icon: const Icon(
           Icons.cloud_download,
         ),
@@ -704,65 +903,54 @@ class _CrawlScreenState extends State<CrawlScreen> {
         children: [
           Padding(
             padding:
-            const EdgeInsets.all(
-              12,
-            ),
+            const EdgeInsets.all(12),
             child: TextField(
               controller:
-              controller,
+              searchController,
+              textInputAction:
+              TextInputAction.search,
               decoration:
               InputDecoration(
                 hintText:
-                "Nhập URL MangaRead",
+                "Nhập tên truyện",
                 prefixIcon:
                 const Icon(
-                  Icons.link,
+                  Icons.search,
+                ),
+                suffixIcon:
+                IconButton(
+                  icon: const Icon(
+                    Icons.search,
+                  ),
+                  onPressed:
+                  searching
+                      ? null
+                      : searchStories,
                 ),
                 border:
                 OutlineInputBorder(
                   borderRadius:
-                  BorderRadius
-                      .circular(
+                  BorderRadius.circular(
                     12,
                   ),
                 ),
-                suffixIcon:
-                IconButton(
-                  icon:
-                  const Icon(
-                    Icons.search,
-                  ),
-                  onPressed:
-                  loading
-                      ? null
-                      : crawl,
-                ),
               ),
-              onSubmitted:
-                  (_) => crawl(),
+              onSubmitted: (_) =>
+                  searchStories(),
             ),
           ),
 
           if (loading)
             const LinearProgressIndicator(),
 
-          if (data == null &&
-              !loading)
-            const Expanded(
-              child: Center(
-                child: Text(
-                  "Hãy nhập URL MangaRead để bắt đầu",
-                ),
-              ),
-            ),
+          if (data == null)
+            _buildSearchResults(),
 
           if (data != null)
             Expanded(
-              child:
-              ListView(
+              child: ListView(
                 padding:
-                const EdgeInsets
-                    .only(
+                const EdgeInsets.only(
                   bottom: 80,
                 ),
                 children: [
@@ -803,9 +991,7 @@ class _CrawlScreenState extends State<CrawlScreen> {
 
     return Padding(
       padding:
-      const EdgeInsets.all(
-        16,
-      ),
+      const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment:
         CrossAxisAlignment.start,
@@ -816,8 +1002,7 @@ class _CrawlScreenState extends State<CrawlScreen> {
             children: [
               ClipRRect(
                 borderRadius:
-                BorderRadius
-                    .circular(
+                BorderRadius.circular(
                   8,
                 ),
                 child:
@@ -879,11 +1064,9 @@ class _CrawlScreenState extends State<CrawlScreen> {
               ),
             ],
           ),
-
           const SizedBox(
             height: 12,
           ),
-
           _buildDescription(),
         ],
       ),
@@ -931,16 +1114,12 @@ class _CrawlScreenState extends State<CrawlScreen> {
         Container(
           width: double.infinity,
           padding:
-          const EdgeInsets.all(
-            12,
-          ),
+          const EdgeInsets.all(12),
           decoration:
           BoxDecoration(
-            color:
-            Colors.grey[100],
+            color: Colors.grey[100],
             borderRadius:
-            BorderRadius
-                .circular(
+            BorderRadius.circular(
               8,
             ),
           ),
@@ -985,15 +1164,15 @@ class _CrawlScreenState extends State<CrawlScreen> {
           children: [
             Padding(
               padding:
-              const EdgeInsets
-                  .fromLTRB(
+              const EdgeInsets.fromLTRB(
                 16,
                 0,
                 16,
                 12,
               ),
               child: Column(
-                children: information
+                children:
+                information
                     .map<Widget>(
                       (item) {
                     final label =
@@ -1028,8 +1207,7 @@ class _CrawlScreenState extends State<CrawlScreen> {
 
   Widget _buildInfoRow(
       String label,
-      String value,
-      ) {
+      String value) {
     return Padding(
       padding:
       const EdgeInsets.symmetric(
@@ -1108,13 +1286,11 @@ class _CrawlScreenState extends State<CrawlScreen> {
   // =========================================================
 
   Widget _buildVolumeList(
-      List volumes,
-      ) {
+      List volumes) {
     return Column(
       children: volumes
           .map<Widget>(
             (volume) {
-
           final chapters =
               volume['chapters']
               as List? ??
