@@ -8,7 +8,7 @@ class ApiConfig {
   static const String image =
       "$host:7778";
 
-  static const String crawler =
+  static const String crawlerUrl =
       "$api/crawler";
 
   static const String chapterImage =

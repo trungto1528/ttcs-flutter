@@ -8,6 +8,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:novel_app/screens/user_management.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../config/api_config.dart';
 import '../models/User.dart';
 import '../models/app_theme_mode.dart';
 import '../services/ota.dart';
@@ -34,8 +35,6 @@ class ProfilePage extends StatefulWidget {
 
 class _ProfilePageState extends State<ProfilePage> {
   User? user;
-
-  final baseAvatar = "http://v2.trungto.qd.je:7778/avatar";
 
   @override
   void initState() {
@@ -164,7 +163,7 @@ class _ProfilePageState extends State<ProfilePage> {
     try {
       var request = http.MultipartRequest(
         "POST",
-        Uri.parse("http://v2.trungto.qd.je:7777/api/users/upload-avatar"),
+        Uri.parse("http://{ApiConfig.api}/api/users/upload-avatar"),
       );
 
       request.files.add(await http.MultipartFile.fromPath("file", file.path));
@@ -222,7 +221,7 @@ class _ProfilePageState extends State<ProfilePage> {
     try {
       final res = await http.post(
         Uri.parse(
-          "http://v2.trungto.qd.je:7777/api/users/${user!.id}/displayName",
+          "http://{ApiConfig.api}/api/users/${user!.id}/displayName",
         ),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({"displayName": newName}),
@@ -266,7 +265,7 @@ class _ProfilePageState extends State<ProfilePage> {
           onTap: _changeAvatar,
           child: ClipOval(
             child: CachedNetworkImage(
-              imageUrl: "$baseAvatar${user!.avatarUrl}",
+              imageUrl: "${ApiConfig.image}${user!.avatarUrl}",
               width: 72,
               height: 72,
               fit: BoxFit.cover,

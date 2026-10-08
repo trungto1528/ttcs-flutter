@@ -1,11 +1,12 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
+import '../config/api_config.dart';
+
 class Bookmark {
-  final baseUrl='http://v2.trungto.qd.je:7777/api/bookmarks';
   Future<void> saveStory(int userId, int storyId) async {
     final res = await http.post(
-      Uri.parse('$baseUrl/save'),
+      Uri.parse('${ApiConfig.api}/bookmarks/save'),
       headers: {"Content-Type": "application/json"},
       body: jsonEncode({
         "userId": userId,
@@ -19,7 +20,7 @@ class Bookmark {
   }
   Future<void> unsaveStory(int userId, int storyId) async {
     final res = await http.delete(
-      Uri.parse('$baseUrl/unsave'),
+      Uri.parse('${ApiConfig.api}/bookmarks/unsave'),
       headers: {"Content-Type": "application/json"},
       body: jsonEncode({
         "userId": userId,
@@ -33,7 +34,7 @@ class Bookmark {
   }
   Future<bool> isSavedApi(int userId, int storyId) async {
     final res = await http.get(
-      Uri.parse('$baseUrl/check?userId=$userId&storyId=$storyId'),
+      Uri.parse('${ApiConfig.api}/bookmarks/check?userId=$userId&storyId=$storyId'),
     );
 
     if (res.statusCode == 200) {
@@ -44,7 +45,7 @@ class Bookmark {
   }
   Future<List> getBookmark(int userId) async {
     final res = await http.get(
-      Uri.parse('$baseUrl/user/$userId'),
+      Uri.parse('${ApiConfig.api}/bookmarks/user/$userId'),
     );
 
     if (res.statusCode == 200) {

@@ -3,10 +3,14 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../config/api_config.dart';
+
 class Auth {
   Future<String> login(String username, String password) async {
     final res = await http.post(
-      Uri.parse("http://v2.trungto.qd.je:7777/api/auth/login"),
+      Uri.parse(
+          "${ApiConfig.api}/auth/login"
+      ),
       headers: {"Content-Type": "application/json"},
       body: jsonEncode({"username": username, "password": password}),
     );
@@ -25,7 +29,7 @@ class Auth {
     String displayName,
   ) async {
     final res = await http.post(
-      Uri.parse("http://v2.trungto.qd.je:7777/api/auth/register"),
+      Uri.parse("${ApiConfig.api}/auth/register"),
       headers: {"Content-Type": "application/json"},
       body: jsonEncode({
         "username": username,
@@ -47,7 +51,7 @@ class Auth {
   ) async {
     final uri =
         Uri.parse(
-          "http://v2.trungto.qd.je:7777/api/users/change-password",
+          "${ApiConfig.api}/users/change-password",
         ).replace(
           queryParameters: {
             "username": username,
@@ -63,14 +67,14 @@ class Auth {
 
   Future<String> fetchUser(int userId) async {
     final res = await http.get(
-      Uri.parse("http://v2.trungto.qd.je:7777/api/auth/fetch/$userId"),
+      Uri.parse("http://${ApiConfig.api}/auth/fetch/$userId"),
     );
     return res.body;
   }
   Future<String> updateDisplayName(int userId, String newName) async {
     try {
       final response = await http.post(
-        Uri.parse("http://v2.trungto.qd.je:7777/api/users/$userId/displayName"),
+        Uri.parse("http://${ApiConfig.api}/users/$userId/displayName"),
         headers: {
           "Content-Type": "application/json",
         },

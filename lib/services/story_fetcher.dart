@@ -2,13 +2,14 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
 
+import '../config/api_config.dart';
+
 class StoryFetcher {
-  final String baseUrl = 'http://v2.trungto.qd.je:7777/api';
 
   // ================= FETCH USER =================
   Future<Map<String, dynamic>> fetchStory(int storyId) async {
     final res = await http.get(
-      Uri.parse("$baseUrl/stories/fetch/$storyId"),
+      Uri.parse("${ApiConfig.api}/stories/fetch/$storyId"),
     );
 
     if (res.statusCode == 200) {
@@ -21,7 +22,7 @@ class StoryFetcher {
   Future<Map<String, dynamic>?> fetchStoryAdmin(
       int storyId, int adminId) async {
     final res = await http.get(
-      Uri.parse("$baseUrl/stories/$storyId/admin"),
+      Uri.parse("${ApiConfig.api}/stories/$storyId/admin"),
       headers: {"userId": adminId.toString()},
     );
 
@@ -34,7 +35,7 @@ class StoryFetcher {
   // ================= GET ALL (ADMIN) =================
   Future<List> getAllStories(int adminId) async {
     final res = await http.get(
-      Uri.parse("$baseUrl/stories/all"),
+      Uri.parse("${ApiConfig.api}/stories/all"),
       headers: {"userId": adminId.toString()},
     );
 
@@ -47,7 +48,7 @@ class StoryFetcher {
   // ================= SEARCH =================
   Future<List> search(String keyword) async {
     final res = await http.get(
-      Uri.parse("$baseUrl/stories/search?keyword=$keyword"),
+      Uri.parse("${ApiConfig.api}/stories/search?keyword=$keyword"),
     );
 
     if (res.statusCode == 200) {
@@ -59,7 +60,7 @@ class StoryFetcher {
   // ================= SEARCH LITTLE =================
   Future<Map<String, dynamic>> searchLittle(int storyId) async {
     final res = await http.get(
-      Uri.parse("$baseUrl/stories/little?storyId=$storyId"),
+      Uri.parse("${ApiConfig.api}/stories/little?storyId=$storyId"),
     );
 
     if (res.statusCode == 200) {
@@ -80,7 +81,7 @@ class StoryFetcher {
     required int userId,
   }) async {
     final res = await http.post(
-      Uri.parse("$baseUrl/stories"),
+      Uri.parse("${ApiConfig.api}/stories"),
       headers: {
         "Content-Type": "application/json",
         "userId": userId.toString(),
@@ -102,7 +103,7 @@ class StoryFetcher {
   // ================= APPROVE =================
   Future<void> approveStory(int adminId, int storyId) async {
     final res = await http.put(
-      Uri.parse("$baseUrl/stories/$storyId/approve"),
+      Uri.parse("${ApiConfig.api}/stories/$storyId/approve"),
       headers: {"userId": adminId.toString()},
     );
 
@@ -114,7 +115,7 @@ class StoryFetcher {
   // ================= REJECT =================
   Future<void> rejectStory(int adminId, int storyId) async {
     final res = await http.put(
-      Uri.parse("$baseUrl/stories/$storyId/reject"),
+      Uri.parse("${ApiConfig.api}/stories/$storyId/reject"),
       headers: {"userId": adminId.toString()},
     );
 
@@ -126,7 +127,7 @@ class StoryFetcher {
   // ================= DELETE =================
   Future<void> deleteStory(int storyId, int userId) async {
     final res = await http.delete(
-      Uri.parse("$baseUrl/stories/$storyId"),
+      Uri.parse("${ApiConfig.api}/stories/$storyId"),
       headers: {"userId": userId.toString()},
     );
 
@@ -140,7 +141,7 @@ class StoryFetcher {
     try {
       var request = http.MultipartRequest(
         'POST',
-        Uri.parse("$baseUrl/stories/upload-cover"),
+        Uri.parse("${ApiConfig.api}/stories/upload-cover"),
       );
 
       request.files.add(await http.MultipartFile.fromPath(
@@ -162,7 +163,7 @@ class StoryFetcher {
   //latestupdated
   Future<List<dynamic>> fetchLatestStories() async {
     final response = await http.get(
-      Uri.parse('$baseUrl/stories/latest-updated'),
+      Uri.parse('${ApiConfig.api}/stories/latest-updated'),
     );
 
     if (response.statusCode == 200) {

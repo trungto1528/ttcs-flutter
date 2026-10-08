@@ -6,6 +6,7 @@ import 'package:novel_app/screens/story_detail_screen.dart';
 import 'package:novel_app/services/last_read.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../config/api_config.dart';
 import '../models/User.dart';
 import '../services/chapter_fetcher.dart';
 import '../services/story_fetcher.dart';
@@ -41,9 +42,6 @@ class _ChapterReaderScreenState extends State<ChapterReaderScreen> {
   bool loading = true;
 
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
-
-  final baseUrl = "http://v2.trungto.qd.je:7777/api";
-  final illusUrl = "http://v2.trungto.qd.je:7778/chapter/";
   final baseCoverUrl = 'http://v2.trungto.qd.je:7778/cover/';
 
   @override
@@ -162,7 +160,7 @@ class _ChapterReaderScreenState extends State<ChapterReaderScreen> {
     if (block["type"] == "image") {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 12),
-        child: CachedNetworkImage(imageUrl: illusUrl + block['data']),
+        child: CachedNetworkImage(imageUrl: ApiConfig.chapterImage + block['data']),
       );
     }
 
@@ -188,7 +186,7 @@ class _ChapterReaderScreenState extends State<ChapterReaderScreen> {
                   ClipRRect(
                     borderRadius: BorderRadius.circular(8),
                     child: CachedNetworkImage(
-                      imageUrl: "$baseCoverUrl/$coverUrl",
+                      imageUrl: "${ApiConfig.coverImage}/$coverUrl",
                       width: 80,
                       height: 110,
                       fit: BoxFit.cover,

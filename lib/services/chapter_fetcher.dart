@@ -2,13 +2,14 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
 
+import '../config/api_config.dart';
+
 class ChapterFetcher {
-  final String baseUrl = 'http://v2.trungto.qd.je:7777/api';
 
   // ================= FETCH CHAPTER =================
   Future<Map<String, dynamic>> fetchChapter(int chapterId) async {
     final res = await http.get(
-      Uri.parse("$baseUrl/chapters/$chapterId"),
+      Uri.parse("${ApiConfig.api}/chapters/$chapterId"),
     );
 
     if (res.statusCode == 200) {
@@ -26,7 +27,7 @@ class ChapterFetcher {
     required int userId,
   }) async {
     final res = await http.post(
-      Uri.parse("$baseUrl/chapters"),
+      Uri.parse("${ApiConfig.api}/chapters"),
       headers: {
         "Content-Type": "application/json",
         "userId": userId.toString(),
@@ -45,7 +46,7 @@ class ChapterFetcher {
   // ================= APPROVE =================
   Future<void> approveChapter(int adminId, int chapterId) async {
     final res = await http.put(
-      Uri.parse("$baseUrl/chapters/$chapterId/approve"),
+      Uri.parse("${ApiConfig.api}/chapters/$chapterId/approve"),
       headers: {"userId": adminId.toString()},
     );
 
@@ -57,7 +58,7 @@ class ChapterFetcher {
   // ================= REJECT =================
   Future<void> rejectChapter(int adminId, int chapterId) async {
     final res = await http.put(
-      Uri.parse("$baseUrl/chapters/$chapterId/reject"),
+      Uri.parse("${ApiConfig.api}/chapters/$chapterId/reject"),
       headers: {"userId": adminId.toString()},
     );
 
@@ -69,7 +70,7 @@ class ChapterFetcher {
   // ================= DELETE =================
   Future<void> deleteChapter(int chapterId, int userId) async {
     final res = await http.delete(
-      Uri.parse("$baseUrl/chapters/$chapterId"), // ✅ FIX baseUrl
+      Uri.parse("${ApiConfig.api}/chapters/$chapterId"),
       headers: {"userId": userId.toString()},
     );
 
@@ -83,7 +84,7 @@ class ChapterFetcher {
     try {
       var request = http.MultipartRequest(
         'POST',
-        Uri.parse("$baseUrl/illus/upload"),
+        Uri.parse("${ApiConfig.api}/illus/upload"),
       );
 
       request.files.add(
@@ -105,7 +106,7 @@ class ChapterFetcher {
   // ================= GET PENDING =================
   Future<List<dynamic>> getPendingChapters() async {
     final res = await http.get(
-      Uri.parse("$baseUrl/chapters/pending"),
+      Uri.parse("${ApiConfig.api}/chapters/pending"),
     );
 
     if (res.statusCode == 200) {
@@ -117,7 +118,8 @@ class ChapterFetcher {
   // ================= GET MY CHAPTER =================
   Future<List<dynamic>> getMyChapter(int userId) async {
     final res = await http.get(
-      Uri.parse("$baseUrl/chapters/my-chapters?userId=$userId"),
+      Uri.parse("${ApiConfig.api}/chapters/my-chapters"),
+      headers: {"userId": userId.toString()},
     );
 
     if (res.statusCode == 200) {

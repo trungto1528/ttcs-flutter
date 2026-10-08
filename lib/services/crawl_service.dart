@@ -5,13 +5,10 @@ import 'package:http/http.dart' as http;
 import '../config/api_config.dart';
 
 class CrawlService {
-  String get baseUrl =>
-      ApiConfig.crawlerUrl;
-
   Future<Map<String, dynamic>> crawlStory(
       String url) async {
     final res = await http.post(
-      Uri.parse("$baseUrl/story-info"),
+      Uri.parse("${ApiConfig.crawlerUrl}/story-info"),
       headers: {
         "Content-Type": "application/json",
       },
@@ -32,7 +29,7 @@ class CrawlService {
   Future<List<Map<String, dynamic>>> searchStories(
       String keyword) async {
     final uri =
-    Uri.parse("$baseUrl/search").replace(
+    Uri.parse("${ApiConfig.crawlerUrl}/search").replace(
       queryParameters: {
         "keyword": keyword.trim(),
       },
@@ -72,7 +69,7 @@ class CrawlService {
       ) async {
     final res = await http.post(
       Uri.parse(
-        "$baseUrl/import-selected",
+        "${ApiConfig.crawlerUrl}/import-selected",
       ),
       headers: {
         "Content-Type":
@@ -95,7 +92,7 @@ class CrawlService {
   Future<Map<String, dynamic>>
   getAllTasks() async {
     final res = await http.get(
-      Uri.parse("$baseUrl/tasks"),
+      Uri.parse("${ApiConfig.crawlerUrl}/tasks"),
     );
 
     if (res.statusCode == 200) {
@@ -111,7 +108,7 @@ class CrawlService {
       String taskId) async {
     final res = await http.post(
       Uri.parse(
-        "$baseUrl/cancel/$taskId",
+        "${ApiConfig.crawlerUrl}/cancel/$taskId",
       ),
     );
 
