@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:novel_app/screens/story_detail_screen.dart';
+import '../config/api_config.dart';
 import '../services/chapter_fetcher.dart';
 
 class MyStoriesScreen extends StatefulWidget {
@@ -15,7 +16,7 @@ class _MyStoriesScreenState extends State<MyStoriesScreen> {
   List stories = [];
   bool isLoading = true;
 
-  final baseCoverUrl = "http://v2.trungto.qd.je:7778/cover/";
+
 
   int? expandedIndex;
 
@@ -165,7 +166,7 @@ class _MyStoriesScreenState extends State<MyStoriesScreen> {
             leading: ClipRRect(
               borderRadius: BorderRadius.circular(8),
               child: Image.network(
-                baseCoverUrl + (story['coverUrl'] ?? ""),
+                ApiConfig.coverImage + (story['coverUrl'] ?? ""),
                 width: 50,
                 height: 75,
                 fit: BoxFit.cover,

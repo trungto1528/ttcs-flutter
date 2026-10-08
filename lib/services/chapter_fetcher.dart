@@ -118,8 +118,7 @@ class ChapterFetcher {
   // ================= GET MY CHAPTER =================
   Future<List<dynamic>> getMyChapter(int userId) async {
     final res = await http.get(
-      Uri.parse("${ApiConfig.api}/chapters/my-chapters"),
-      headers: {"userId": userId.toString()},
+      Uri.parse("${ApiConfig.api}/chapters/my-chapters?userId=$userId"),
     );
 
     if (res.statusCode == 200) {

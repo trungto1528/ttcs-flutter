@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:novel_app/config/api_config.dart';
 import 'package:novel_app/screens/chapter_reader_screen.dart';
 import 'package:novel_app/services/bookmark.dart';
 import 'package:novel_app/services/story_fetcher.dart';
@@ -30,8 +31,6 @@ class _StoryDetailScreenState extends State<StoryDetailScreen> {
   bool isSaved = false;
 
   List chapters = [];
-
-  final baseCoverUrl = 'http://v2.trungto.qd.je:7778/cover/';
 
   @override
   void initState() {
@@ -200,7 +199,7 @@ class _StoryDetailScreenState extends State<StoryDetailScreen> {
                   ClipRRect(
                     borderRadius: BorderRadius.circular(6),
                     child: CachedNetworkImage(
-                      imageUrl: baseCoverUrl + (story['coverUrl'] ?? ""),
+                      imageUrl: ApiConfig.coverImage + (story['coverUrl'] ?? ""),
                       height: 180,
                       width: 120,
                       fit: BoxFit.cover,

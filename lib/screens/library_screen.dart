@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:novel_app/config/api_config.dart';
 import 'package:novel_app/screens/story_detail_screen.dart';
 import 'package:novel_app/services/bookmark.dart';
 import 'package:novel_app/services/story_fetcher.dart';
@@ -147,7 +148,7 @@ class _LibraryPageState extends State<LibraryPage> with RouteAware {
                       height: 105,
                       fit: BoxFit.cover,
                       imageUrl:
-                          "http://v2.trungto.qd.je:7778/cover/${s.coverUrl}",
+                          "${ApiConfig.coverImage}${s.coverUrl}",
                     ),
                   ),
                   SizedBox(width: 12),

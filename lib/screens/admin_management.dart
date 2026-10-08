@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
+import '../config/api_config.dart';
 import '../services/story_fetcher.dart';
 import '../services/chapter_fetcher.dart';
 
@@ -19,8 +20,6 @@ class _AdminStoryManagerScreenState
   List stories = [];
   Map<int, List> storyChapters = {};
   bool isLoading = true;
-
-  final baseCoverUrl = "http://v2.trungto.qd.je:7778/cover/";
 
   @override
   void initState() {
@@ -93,7 +92,7 @@ class _AdminStoryManagerScreenState
                     ),
                     child: CachedNetworkImage(
                       imageUrl:
-                      "http://v2.trungto.qd.je:7778/chapter/${block["data"]}",
+                      "${ApiConfig.chapterImage}${block["data"]}",
                     ),
                   );
                 }
@@ -280,7 +279,7 @@ class _AdminStoryManagerScreenState
                         height: 90,
                         fit: BoxFit.cover,
                         imageUrl:
-                        "$baseCoverUrl${story['coverUrl']}",
+                        "${ApiConfig.coverImage}${story['coverUrl']}",
                         placeholder: (_, __) => const SizedBox(
                           width: 60,
                           height: 90,

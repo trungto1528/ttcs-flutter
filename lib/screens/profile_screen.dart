@@ -163,7 +163,7 @@ class _ProfilePageState extends State<ProfilePage> {
     try {
       var request = http.MultipartRequest(
         "POST",
-        Uri.parse("http://{ApiConfig.api}/api/users/upload-avatar"),
+        Uri.parse("${ApiConfig.api}/users/upload-avatar"),
       );
 
       request.files.add(await http.MultipartFile.fromPath("file", file.path));
@@ -221,7 +221,7 @@ class _ProfilePageState extends State<ProfilePage> {
     try {
       final res = await http.post(
         Uri.parse(
-          "http://{ApiConfig.api}/api/users/${user!.id}/displayName",
+          "${ApiConfig.api}/users/${user!.id}/displayName",
         ),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({"displayName": newName}),

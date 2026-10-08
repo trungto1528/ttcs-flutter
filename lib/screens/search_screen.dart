@@ -6,6 +6,8 @@ import 'package:novel_app/models/Story.dart';
 import 'package:novel_app/screens/story_detail_screen.dart';
 import 'package:novel_app/services/story_fetcher.dart';
 
+import '../config/api_config.dart';
+
 class SearchScreen extends StatefulWidget {
   const SearchScreen({super.key});
 
@@ -122,7 +124,7 @@ class _SearchScreenState extends State<SearchScreen> {
                     width: 70,
                     height: 105,
                     fit: BoxFit.cover,
-                    imageUrl: "http://v2.trungto.qd.je:7778/cover/${s.coverUrl}",
+                    imageUrl: "${ApiConfig.coverImage}${s.coverUrl}",
                   ),
                 ),
                 SizedBox(width: 12),

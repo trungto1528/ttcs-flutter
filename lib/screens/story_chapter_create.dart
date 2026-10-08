@@ -9,6 +9,7 @@ import 'package:path/path.dart' as p;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
+import '../config/api_config.dart';
 import '../models/User.dart';
 import '../services/chapter_fetcher.dart';
 import '../services/story_fetcher.dart';
@@ -57,8 +58,7 @@ class _StoryChapterScreenState extends State<StoryChapterScreen>
   bool _loading = false;
 
   final List<ContentBlock> _blocks = [ContentBlock.text()];
-
-  final baseCoverUrl = 'http://v2.trungto.qd.je:7778/cover/';
+  
 
   @override
   void initState() {
@@ -355,7 +355,7 @@ class _StoryChapterScreenState extends State<StoryChapterScreen>
                             width: 60,
                             height: 90,
                             fit: BoxFit.cover,
-                            imageUrl: baseCoverUrl + (s['coverUrl'] ?? ""),
+                            imageUrl: ApiConfig.coverImage + (s['coverUrl'] ?? ""),
                           ),
                           const SizedBox(width: 10),
                           Expanded(
@@ -396,7 +396,7 @@ class _StoryChapterScreenState extends State<StoryChapterScreen>
                   width: 70,
                   height: 100,
                   fit: BoxFit.cover,
-                  imageUrl: baseCoverUrl + (_selectedStory!['coverUrl'] ?? ""),
+                  imageUrl: ApiConfig.coverImage + (_selectedStory!['coverUrl'] ?? ""),
                 ),
                 const SizedBox(width: 12),
                 Expanded(

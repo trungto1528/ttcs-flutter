@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:novel_app/config/api_config.dart';
 
 import '../services/user_service.dart';
 
@@ -21,8 +22,6 @@ class _AdminUserManagerScreenState
   List users = [];
   bool isLoading = true;
 
-  final avatarBaseUrl =
-      "http://v2.trungto.qd.je:7778/avatar";
 
   @override
   void initState() {
@@ -133,7 +132,7 @@ class _AdminUserManagerScreenState
                     CircleAvatar(
                       radius: 24,
                       backgroundImage: CachedNetworkImageProvider(
-                        "$avatarBaseUrl${user['avatarUrl']}",
+                        "${ApiConfig.avatarImage}${user['avatarUrl']}",
                       ),
                     ),
 

@@ -67,14 +67,14 @@ class Auth {
 
   Future<String> fetchUser(int userId) async {
     final res = await http.get(
-      Uri.parse("http://${ApiConfig.api}/auth/fetch/$userId"),
+      Uri.parse("${ApiConfig.api}/auth/fetch/$userId"),
     );
     return res.body;
   }
   Future<String> updateDisplayName(int userId, String newName) async {
     try {
       final response = await http.post(
-        Uri.parse("http://${ApiConfig.api}/users/$userId/displayName"),
+        Uri.parse("${ApiConfig.api}/users/$userId/displayName"),
         headers: {
           "Content-Type": "application/json",
         },

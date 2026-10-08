@@ -16,4 +16,7 @@ class ApiConfig {
 
   static const String coverImage =
       "$image/cover";
+
+  static const String avatarImage =
+      "$image/avatar";
 }

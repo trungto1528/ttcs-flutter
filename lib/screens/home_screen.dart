@@ -10,6 +10,7 @@ import 'package:novel_app/services/chapter_fetcher.dart';
 import 'package:novel_app/services/story_fetcher.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../config/api_config.dart';
 import '../models/User.dart';
 import '../route_observer.dart';
 import '../services/auth.dart';
@@ -29,7 +30,6 @@ class _HomePageState extends State<HomePage> with RouteAware {
   bool isSearching = false;
   String keyword = "";
   Timer? _debounce;
-  final baseCoverUrl = 'http://v2.trungto.qd.je:7778/cover';
   String? coverUrl;
 
   @override
@@ -161,7 +161,7 @@ class _HomePageState extends State<HomePage> with RouteAware {
               ClipRRect(
                 borderRadius: BorderRadius.circular(8),
                 child: CachedNetworkImage(
-                  imageUrl: "$baseCoverUrl/$coverUrl",
+                  imageUrl: "${ApiConfig.coverImage}/$coverUrl",
                   width: 80,
                   height: 110,
                   fit: BoxFit.cover,
@@ -245,7 +245,7 @@ class _HomePageState extends State<HomePage> with RouteAware {
 
                     leading: CachedNetworkImage(
                       imageUrl:
-                      "$baseCoverUrl/${story['coverUrl']}",
+                      "${ApiConfig.coverImage}/${story['coverUrl']}",
                       width: 60,
                       fit: BoxFit.cover,
                     ),
