@@ -1,3 +1,4 @@
+
 import 'dart:convert';
 
 import 'package:cached_network_image/cached_network_image.dart';
@@ -15,7 +16,10 @@ import 'login_screen.dart';
 class StoryDetailScreen extends StatefulWidget {
   final int storyId;
 
-  const StoryDetailScreen({super.key, required this.storyId});
+  const StoryDetailScreen({
+    super.key,
+    required this.storyId,
+  });
 
   @override
   State<StoryDetailScreen> createState() => _StoryDetailScreenState();
@@ -32,6 +36,10 @@ class _StoryDetailScreenState extends State<StoryDetailScreen> {
 
   List chapters = [];
 
+  // Phân trang danh sách chương.
+  static const int _pageSize = 20;
+  int _currentPage = 0;
+
   @override
   void initState() {
     super.initState();
@@ -40,7 +48,11 @@ class _StoryDetailScreenState extends State<StoryDetailScreen> {
 
   Future<void> init() async {
     await _loadUser();
+    if (!mounted) return;
+
     await _loadStory();
+    if (!mounted) return;
+
     await _loadSaved();
   }
 
@@ -48,12 +60,12 @@ class _StoryDetailScreenState extends State<StoryDetailScreen> {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text("Yêu cầu đăng nhập"),
-        content: const Text("Bạn cần đăng nhập để lưu truyện"),
+        title: const Text('Yêu cầu đăng nhập'),
+        content: const Text('Bạn cần đăng nhập để lưu truyện'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text("Đóng"),
+            child: const Text('Đóng'),
           ),
           TextButton(
             onPressed: () async {
@@ -66,12 +78,16 @@ class _StoryDetailScreenState extends State<StoryDetailScreen> {
                 ),
               );
 
+              if (!mounted) return;
+
               if (loginResult == true) {
                 await _loadUser();
+                if (!mounted) return;
+
                 await _loadSaved();
               }
             },
-            child: const Text("Đăng nhập"),
+            child: const Text('Đăng nhập'),
           ),
         ],
       ),
@@ -80,7 +96,9 @@ class _StoryDetailScreenState extends State<StoryDetailScreen> {
 
   Future<void> _loadUser() async {
     final prefs = await SharedPreferences.getInstance();
-    final userStr = prefs.getString("user");
+    final userStr = prefs.getString('user');
+
+    if (!mounted) return;
 
     if (userStr == null) {
       setState(() => user = null);
@@ -100,65 +118,117 @@ class _StoryDetailScreenState extends State<StoryDetailScreen> {
 
   Future<void> _loadSaved() async {
     if (user == null) {
-      setState(() => isSaved = false);
+      if (!mounted) return;
+
+      setState(() {
+        isSaved = false;
+        bookmarkLoading = false;
+      });
       return;
     }
 
-    final result = await Bookmark().isSavedApi(
-      user!.id,
-      widget.storyId,
-    );
+    if (mounted) {
+      setState(() => bookmarkLoading = true);
+    }
 
-    setState(() {
-      isSaved = result;
-      bookmarkLoading = false;
-    });
+    try {
+      final result = await Bookmark().isSavedApi(
+        user!.id,
+        widget.storyId,
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        isSaved = result;
+        bookmarkLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() => bookmarkLoading = false);
+      debugPrint('Lỗi kiểm tra bookmark: $e');
+    }
   }
 
   Future<void> _loadStory() async {
     try {
       final data = await StoryFetcher().fetchStory(widget.storyId);
 
+      if (!mounted) return;
+
       setState(() {
         story = data;
-        chapters = data["chapters"] ?? [];
+        chapters = data['chapters'] ?? [];
+        _currentPage = 0;
         storyLoading = false;
       });
     } catch (e) {
       if (!mounted) return;
 
+      setState(() => storyLoading = false);
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text("Lỗi tải truyện"),
+          content: Text('Lỗi tải truyện'),
         ),
       );
     }
   }
 
-  /// ================= GROUP CHAPTER =================
-
+  // Gom các chương có cùng chapterNumber.
   Map<int, List<dynamic>> get groupedChapters {
     final Map<int, List<dynamic>> map = {};
 
-    for (var c in chapters) {
-      final key = c["chapterNumber"] ?? 0;
+    for (final c in chapters) {
+      final number = int.tryParse(
+        c['chapterNumber']?.toString() ?? '',
+      ) ??
+          0;
 
-      map.putIfAbsent(key, () => []);
-      map[key]!.add(c);
+      map.putIfAbsent(number, () => []);
+      map[number]!.add(c);
     }
 
     final sortedKeys = map.keys.toList()..sort();
 
     return {
-      for (var k in sortedKeys)
-        k: map[k]!,
+      for (final number in sortedKeys) number: map[number]!,
     };
   }
 
-  /// ================= STORY INFORMATION =================
+  // Tổng số trang.
+  int get _totalPages {
+    return (groupedChapters.length / _pageSize).ceil();
+  }
 
+  // Chỉ lấy các nhóm chương thuộc trang hiện tại.
+  Map<int, List<dynamic>> get paginatedChapters {
+    final entries = groupedChapters.entries.toList();
+    final start = _currentPage * _pageSize;
+
+    if (start >= entries.length) {
+      return {};
+    }
+
+    final end = (start + _pageSize).clamp(0, entries.length);
+
+    return Map<int, List<dynamic>>.fromEntries(
+      entries.sublist(start, end),
+    );
+  }
+
+  void _goToPage(int page) {
+    if (page < 0 || page >= _totalPages) return;
+
+    setState(() {
+      _currentPage = page;
+    });
+  }
+
+  // Thông tin truyện.
   Widget _buildInformation() {
-    final List information = story["information"] ?? [];
+    final List information = story['information'] ?? [];
 
     if (information.isEmpty) {
       return const SizedBox.shrink();
@@ -170,15 +240,13 @@ class _StoryDetailScreenState extends State<StoryDetailScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            "Thông tin truyện",
+            'Thông tin truyện',
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
             ),
           ),
-
           const SizedBox(height: 10),
-
           Container(
             decoration: BoxDecoration(
               color: Theme.of(context).cardColor,
@@ -193,8 +261,8 @@ class _StoryDetailScreenState extends State<StoryDetailScreen> {
                   final index = entry.key;
                   final item = entry.value;
 
-                  final label = item["label"]?.toString() ?? "";
-                  final value = item["value"]?.toString() ?? "";
+                  final label = item['label']?.toString() ?? '';
+                  final value = item['value']?.toString() ?? '';
 
                   return Column(
                     children: [
@@ -215,9 +283,7 @@ class _StoryDetailScreenState extends State<StoryDetailScreen> {
                                 ),
                               ),
                             ),
-
                             const SizedBox(width: 10),
-
                             Expanded(
                               child: Text(
                                 value,
@@ -229,7 +295,6 @@ class _StoryDetailScreenState extends State<StoryDetailScreen> {
                           ],
                         ),
                       ),
-
                       if (index != information.length - 1)
                         Divider(
                           height: 1,
@@ -240,6 +305,76 @@ class _StoryDetailScreenState extends State<StoryDetailScreen> {
                 }),
               ],
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Hiển thị các nút phân trang.
+  Widget _buildPagination() {
+    if (_totalPages <= 1) {
+      return const SizedBox.shrink();
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: 12,
+        vertical: 16,
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          IconButton(
+            tooltip: 'Trang đầu',
+            onPressed: _currentPage > 0
+                ? () => _goToPage(0)
+                : null,
+            icon: const Icon(Icons.first_page),
+          ),
+          IconButton(
+            tooltip: 'Trang trước',
+            onPressed: _currentPage > 0
+                ? () => _goToPage(_currentPage - 1)
+                : null,
+            icon: const Icon(Icons.chevron_left),
+          ),
+          Container(
+            constraints: const BoxConstraints(
+              minWidth: 100,
+            ),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 8,
+            ),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.primaryContainer,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              'Trang ${_currentPage + 1} / $_totalPages',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                color: Theme.of(context)
+                    .colorScheme
+                    .onPrimaryContainer,
+              ),
+            ),
+          ),
+          IconButton(
+            tooltip: 'Trang sau',
+            onPressed: _currentPage < _totalPages - 1
+                ? () => _goToPage(_currentPage + 1)
+                : null,
+            icon: const Icon(Icons.chevron_right),
+          ),
+          IconButton(
+            tooltip: 'Trang cuối',
+            onPressed: _currentPage < _totalPages - 1
+                ? () => _goToPage(_totalPages - 1)
+                : null,
+            icon: const Icon(Icons.last_page),
           ),
         ],
       ),
@@ -258,9 +393,7 @@ class _StoryDetailScreenState extends State<StoryDetailScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          story["title"] ?? "",
-        ),
+        title: Text(story['title'] ?? ''),
         actions: [
           IconButton(
             icon: bookmarkLoading
@@ -289,22 +422,40 @@ class _StoryDetailScreenState extends State<StoryDetailScreen> {
                 bookmarkLoading = true;
               });
 
-              if (isSaved) {
-                await Bookmark().unsaveStory(
-                  user!.id,
-                  widget.storyId,
-                );
-              } else {
-                await Bookmark().saveStory(
-                  user!.id,
-                  widget.storyId,
-                );
-              }
+              try {
+                if (isSaved) {
+                  await Bookmark().unsaveStory(
+                    user!.id,
+                    widget.storyId,
+                  );
+                } else {
+                  await Bookmark().saveStory(
+                    user!.id,
+                    widget.storyId,
+                  );
+                }
 
-              setState(() {
-                isSaved = !isSaved;
-                bookmarkLoading = false;
-              });
+                if (!mounted) return;
+
+                setState(() {
+                  isSaved = !isSaved;
+                  bookmarkLoading = false;
+                });
+              } catch (e) {
+                if (!mounted) return;
+
+                setState(() {
+                  bookmarkLoading = false;
+                });
+
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Không thể cập nhật danh sách yêu thích'),
+                  ),
+                );
+
+                debugPrint('Lỗi cập nhật bookmark: $e');
+              }
             },
           ),
         ],
@@ -312,11 +463,11 @@ class _StoryDetailScreenState extends State<StoryDetailScreen> {
       body: RefreshIndicator(
         onRefresh: init,
         child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
           children: [
             const Divider(),
 
-            // ================= STORY HEADER =================
-
+            // Thông tin đầu truyện.
             Padding(
               padding: const EdgeInsets.all(16),
               child: Row(
@@ -332,28 +483,23 @@ class _StoryDetailScreenState extends State<StoryDetailScreen> {
                       fit: BoxFit.cover,
                     ),
                   ),
-
                   const SizedBox(width: 12),
-
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          story['title'] ?? "",
+                          story['title'] ?? '',
                           style: const TextStyle(
                             fontSize: 22,
                           ),
                         ),
-
                         const SizedBox(height: 6),
-
                         Text(
-                          "Tác giả: ${story['author'] ?? ""}",
+                          'Tác giả: ${story['author'] ?? ''}',
                         ),
-
                         Text(
-                          "Tạo bởi: ${story['createdByName'] ?? ""}",
+                          'Tạo bởi: ${story['createdByName'] ?? ''}',
                         ),
                       ],
                     ),
@@ -362,23 +508,21 @@ class _StoryDetailScreenState extends State<StoryDetailScreen> {
               ),
             ),
 
-            // ================= DESCRIPTION =================
-
+            // Mô tả truyện.
             Padding(
               padding: const EdgeInsets.all(16),
               child: ExpandableText(
-                text: story['description'] ?? "",
+                text: story['description'] ?? '',
               ),
             ),
 
-            // ================= INFORMATION =================
-
+            // Thông tin truyện.
             _buildInformation(),
 
             const Padding(
               padding: EdgeInsets.all(16),
               child: Text(
-                "Danh sách chương",
+                'Danh sách chương',
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
@@ -386,9 +530,23 @@ class _StoryDetailScreenState extends State<StoryDetailScreen> {
               ),
             ),
 
-            // ================= GROUPED CHAPTER LIST =================
+            // Thông tin tổng số nhóm chương.
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 16,
+              ),
+              child: Text(
+                '${groupedChapters.length} chương · '
+                    '${_totalPages == 0 ? 0 : _currentPage + 1}/$_totalPages trang',
+                style: TextStyle(
+                  color: Colors.grey.shade600,
+                  fontSize: 13,
+                ),
+              ),
+            ),
 
-            ...groupedChapters.entries.map((entry) {
+            // Danh sách chương của trang hiện tại.
+            ...paginatedChapters.entries.map((entry) {
               final chapterNumber = entry.key;
               final list = entry.value;
 
@@ -403,7 +561,7 @@ class _StoryDetailScreenState extends State<StoryDetailScreen> {
                       8,
                     ),
                     child: Text(
-                      "Ch. $chapterNumber",
+                      'Ch. $chapterNumber',
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
@@ -412,8 +570,7 @@ class _StoryDetailScreenState extends State<StoryDetailScreen> {
                     ),
                   ),
 
-                  // Danh sách các bản dịch/nguồn của chương đó
-
+                  // Các bản dịch/nguồn của cùng chương.
                   ...list.map((c) {
                     return Container(
                       margin: const EdgeInsets.symmetric(
@@ -435,8 +592,7 @@ class _StoryDetailScreenState extends State<StoryDetailScreen> {
                         ],
                       ),
                       child: ListTile(
-                        contentPadding:
-                        const EdgeInsets.symmetric(
+                        contentPadding: const EdgeInsets.symmetric(
                           horizontal: 16,
                           vertical: 4,
                         ),
@@ -445,7 +601,7 @@ class _StoryDetailScreenState extends State<StoryDetailScreen> {
                           color: Colors.blue,
                         ),
                         title: Text(
-                          c["title"] ?? "Không có tiêu đề",
+                          c['title'] ?? 'Không có tiêu đề',
                           style: const TextStyle(
                             fontWeight: FontWeight.w600,
                           ),
@@ -453,7 +609,7 @@ class _StoryDetailScreenState extends State<StoryDetailScreen> {
                           overflow: TextOverflow.ellipsis,
                         ),
                         subtitle: Text(
-                          "Người đăng: ${c["createdByName"]}",
+                          'Người đăng: ${c['createdByName'] ?? 'Không rõ'}',
                           style: TextStyle(
                             fontSize: 13,
                             color: Colors.grey.shade600,
@@ -467,12 +623,11 @@ class _StoryDetailScreenState extends State<StoryDetailScreen> {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (_) =>
-                                  ChapterReaderScreen(
-                                    chapterId: c["id"],
-                                    storyId: widget.storyId,
-                                    createdById: c["createdById"],
-                                  ),
+                              builder: (_) => ChapterReaderScreen(
+                                chapterId: c['id'],
+                                storyId: widget.storyId,
+                                createdById: c['createdById'],
+                              ),
                             ),
                           );
                         },
@@ -482,6 +637,9 @@ class _StoryDetailScreenState extends State<StoryDetailScreen> {
                 ],
               );
             }),
+
+            // Nút chuyển trang.
+            _buildPagination(),
 
             const SizedBox(height: 20),
           ],
