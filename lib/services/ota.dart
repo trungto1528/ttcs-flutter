@@ -128,7 +128,7 @@ class OtaService {
       context: context,
       builder: (_) => AlertDialog(
         title: const Text("Thông báo"),
-        content: Text("Ứng dụng đã ở phiên bản mới nhất (${local["versionName"]})"),
+        content: Text("Ứng dụng đã ở phiên bản mới nhất (${local["versionName"]} + ${local["buildNumber"]})"),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text("OK"))
         ],

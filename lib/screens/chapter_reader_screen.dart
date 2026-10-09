@@ -30,45 +30,48 @@ class ChapterReaderScreen extends StatefulWidget {
 
 class _ChapterReaderScreenState extends State<ChapterReaderScreen> {
   final ScrollController _scrollController = ScrollController();
-  double _readingProgress = 0.0;
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  final GlobalKey _listViewKey = GlobalKey();
+
   Map<String, dynamic>? chapter;
-  List blocks = [];
-  List chapters = [];
+
+  List<dynamic> blocks = [];
+  List<dynamic> chapters = [];
+
+  // Ánh xạ vị trí block sang số trang ảnh.
+  // -1 nghĩa là block văn bản hoặc không phải ảnh.
+  List<int> _imageIndexByBlockIndex = [];
+
+  // Mỗi ảnh có một key để xác định trang đang nằm tại đầu vùng đọc.
+  List<GlobalKey> _imageKeys = [];
+
+  final Set<int> _finishedInitialImageIndexes = {};
+
   late int currentChapterId;
   late int lastChapterNumber;
+  late String lastStoryTitle;
+  late String coverUrl;
+  late int index;
+
   int? nextId;
   int? prevId;
-  late String lastStoryTitle;
-  late final String coverUrl;
-  late int index;
-  List chaptersByUser = [];
-  bool loading = true;
 
-  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  int _totalPages = 0;
+  int _currentPage = 0;
+  int _initialImageCount = 0;
+
+  bool _allowRemainingImages = false;
+  bool loading = true;
 
   @override
   void initState() {
     super.initState();
+
     currentChapterId = widget.chapterId;
+
     _scrollController.addListener(_updateReadingProgress);
+
     _initData();
-  }
-
-  void _updateReadingProgress() {
-    if (!_scrollController.hasClients) return;
-
-    final maxScroll = _scrollController.position.maxScrollExtent;
-    final offset = _scrollController.offset;
-
-    final progress = maxScroll <= 0
-        ? 1.0
-        : (offset / maxScroll).clamp(0.0, 1.0);
-
-    if ((_readingProgress - progress).abs() > 0.005 && mounted) {
-      setState(() {
-        _readingProgress = progress;
-      });
-    }
   }
 
   Future<void> _initData() async {
@@ -81,22 +84,27 @@ class _ChapterReaderScreenState extends State<ChapterReaderScreen> {
       }).toList();
 
       filtered.sort(
-        (a, b) =>
-            (a["chapterNumber"] as int).compareTo(b["chapterNumber"] as int),
+            (a, b) => (a["chapterNumber"] as int)
+            .compareTo(b["chapterNumber"] as int),
       );
 
       if (!mounted) return;
 
       setState(() {
         chapters = filtered;
-        lastStoryTitle = storyData['title'];
-        coverUrl = storyData['coverUrl'];
+        lastStoryTitle = storyData["title"];
+        coverUrl = storyData["coverUrl"];
       });
 
       await _fetchChapter(currentChapterId);
     } catch (e) {
       if (!mounted) return;
-      setState(() => loading = false);
+
+      setState(() {
+        loading = false;
+      });
+
+      debugPrint('Lỗi tải thông tin truyện: $e');
     }
   }
 
@@ -105,7 +113,6 @@ class _ChapterReaderScreenState extends State<ChapterReaderScreen> {
 
     setState(() {
       loading = true;
-      _readingProgress = 0.0;
     });
 
     try {
@@ -113,17 +120,53 @@ class _ChapterReaderScreenState extends State<ChapterReaderScreen> {
 
       if (!mounted) return;
 
+      final newBlocks = List<dynamic>.from(data["blocks"] ?? []);
+
+      // Tạo danh sách trang ảnh và ánh xạ block -> trang.
+      final imageIndexByBlockIndex = <int>[];
+      int imageCount = 0;
+
+      for (final block in newBlocks) {
+        if (block["type"] == "image") {
+          imageIndexByBlockIndex.add(imageCount);
+          imageCount++;
+        } else {
+          imageIndexByBlockIndex.add(-1);
+        }
+      }
+
+      final imageKeys = List<GlobalKey>.generate(
+        imageCount,
+            (_) => GlobalKey(),
+      );
+
       currentChapterId = id;
       _updateNextPrev();
 
       setState(() {
         chapter = data;
-        blocks = data["blocks"];
+        blocks = newBlocks;
+
+        _imageIndexByBlockIndex = imageIndexByBlockIndex;
+        _imageKeys = imageKeys;
+
+        _totalPages = imageCount;
+        _currentPage = imageCount > 0 ? 1 : 0;
+
+        // Chỉ tải trước tối đa 3 ảnh đầu tiên.
+        _initialImageCount = imageCount < 3 ? imageCount : 3;
+
+        _finishedInitialImageIndexes.clear();
+
+        // Các ảnh còn lại chưa được phép tải.
+        // Nếu chương không có ảnh thì không cần chờ.
+        _allowRemainingImages = imageCount == 0;
+
         lastChapterNumber = data["chapterNumber"];
         loading = false;
       });
 
-      // Đưa nội dung về đầu chương mới sau khi giao diện cập nhật.
+      // Đưa nội dung về đầu chương mới.
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted && _scrollController.hasClients) {
           _scrollController.jumpTo(0);
@@ -148,8 +191,76 @@ class _ChapterReaderScreenState extends State<ChapterReaderScreen> {
       }
     } catch (e) {
       if (!mounted) return;
-      setState(() => loading = false);
+
+      setState(() {
+        loading = false;
+      });
+
       debugPrint('Lỗi tải chương: $e');
+    }
+  }
+
+  /// Được gọi khi một trong 3 ảnh đầu tải xong hoặc tải lỗi.
+  ///
+  /// Chỉ khi cả 3 ảnh đầu hoàn tất, các ảnh còn lại mới được phép tải.
+  void _onInitialImageFinished(int chapterId, int imageIndex) {
+    if (!mounted || chapterId != currentChapterId) return;
+
+    if (imageIndex >= _initialImageCount) return;
+
+    if (!_finishedInitialImageIndexes.add(imageIndex)) return;
+
+    if (_finishedInitialImageIndexes.length >= _initialImageCount) {
+      setState(() {
+        _allowRemainingImages = true;
+      });
+    }
+  }
+
+  /// Cập nhật số trang đang đọc dựa trên vị trí thực tế của ảnh.
+  void _updateReadingProgress() {
+    if (!_scrollController.hasClients || _totalPages == 0) return;
+
+    final listContext = _listViewKey.currentContext;
+    final listObject = listContext?.findRenderObject();
+
+    if (listObject is! RenderBox || !listObject.hasSize) return;
+
+    final viewportTop = listObject.localToGlobal(Offset.zero).dy;
+
+    int? lastPageStarted;
+    int? firstAvailablePage;
+    int? visiblePage;
+
+    for (int i = 0; i < _imageKeys.length; i++) {
+      final imageContext = _imageKeys[i].currentContext;
+      final imageObject = imageContext?.findRenderObject();
+
+      if (imageObject is! RenderBox || !imageObject.hasSize) continue;
+
+      final imageTop = imageObject.localToGlobal(Offset.zero).dy;
+      final imageBottom = imageTop + imageObject.size.height;
+
+      firstAvailablePage ??= i + 1;
+
+      if (imageTop <= viewportTop) {
+        lastPageStarted = i + 1;
+      }
+
+      // Nếu đầu vùng đọc đang nằm trong ảnh này, đây là trang hiện tại.
+      if (imageTop <= viewportTop && imageBottom > viewportTop) {
+        visiblePage = i + 1;
+        break;
+      }
+    }
+
+    final newPage =
+        visiblePage ?? lastPageStarted ?? firstAvailablePage ?? 1;
+
+    if (newPage != _currentPage && mounted) {
+      setState(() {
+        _currentPage = newPage;
+      });
     }
   }
 
@@ -175,6 +286,7 @@ class _ChapterReaderScreenState extends State<ChapterReaderScreen> {
 
   Future<void> _saveLastRead(int chapterId) async {
     final prefs = await SharedPreferences.getInstance();
+
     await prefs.setInt("lastStoryId", widget.storyId);
     await prefs.setInt("lastChapterId", chapterId);
     await prefs.setInt("lastReadCreatedById", widget.createdById);
@@ -206,49 +318,76 @@ class _ChapterReaderScreenState extends State<ChapterReaderScreen> {
         padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
         child: Text(
           block["data"] ?? "",
-          style: const TextStyle(fontSize: 18, height: 1.5),
+          style: const TextStyle(
+            fontSize: 18,
+            height: 1.5,
+          ),
         ),
       );
     }
 
     if (block["type"] == "image") {
-      final isLastImage = !blocks
-          .skip(blockIndex + 1)
-          .any((b) => b["type"] == "image");
+      final imageIndex = _imageIndexByBlockIndex[blockIndex];
+
+      final shouldLoad =
+          imageIndex < _initialImageCount || _allowRemainingImages;
 
       final image = SequentialChapterImage(
-        key: ValueKey('${currentChapterId}_${block['data']}'),
+        key: _imageKeys[imageIndex],
         imageUrl: '${ApiConfig.chapterImage}/${block['data']}',
+        shouldLoad: shouldLoad,
+        onLoadFinished: imageIndex < _initialImageCount
+            ? () => _onInitialImageFinished(
+          currentChapterId,
+          imageIndex,
+        )
+            : null,
       );
 
-      if (!isLastImage) {
+      final isFirstImage = imageIndex == 0;
+      final isLastImage = imageIndex == _totalPages - 1;
+
+      // Chỉ ảnh đầu và ảnh cuối có vùng chạm chuyển chương.
+      if (!isFirstImage && !isLastImage) {
         return image;
       }
 
       return LayoutBuilder(
         builder: (context, constraints) {
-          return GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTapUp: (details) {
-              final width = constraints.maxWidth;
+          final edgeWidth = constraints.maxWidth * 0.2;
 
-              // Chỉ nhấn vào 20% mép phải ảnh để sang chương.
-              if (details.localPosition.dx >= width * 0.8) {
-                _goNext();
-              }
-            },
-            child: Stack(
-              children: [
-                image,
+          return Stack(
+            children: [
+              image,
+
+              // Rìa trái ảnh đầu: về chương trước.
+              if (isFirstImage)
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  bottom: 0,
+                  width: edgeWidth,
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: _goPrev,
+                    child: const SizedBox.expand(),
+                  ),
+                ),
+
+              // Rìa phải ảnh cuối: sang chương sau.
+              if (isLastImage)
                 Positioned(
                   top: 0,
                   right: 0,
                   bottom: 0,
-                  width: constraints.maxWidth * 0.2,
-                  child: const SizedBox.expand(),
+                  width: edgeWidth,
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: _goNext,
+                    child: const SizedBox.expand(),
+                  ),
                 ),
-              ],
-            ),
+            ],
           );
         },
       );
@@ -260,10 +399,14 @@ class _ChapterReaderScreenState extends State<ChapterReaderScreen> {
   @override
   Widget build(BuildContext context) {
     if (loading || chapter == null) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
     }
 
-    var scaffold = Scaffold(
+    return Scaffold(
       key: _scaffoldKey,
       drawer: Drawer(
         child: ListView(
@@ -315,11 +458,15 @@ class _ChapterReaderScreenState extends State<ChapterReaderScreen> {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 8,
+              ),
               child: GridView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                gridDelegate:
+                const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 3,
                   crossAxisSpacing: 8,
                   mainAxisSpacing: 8,
@@ -351,7 +498,10 @@ class _ChapterReaderScreenState extends State<ChapterReaderScreen> {
                                 : FontWeight.normal,
                             color: isCurrent
                                 ? Theme.of(context).colorScheme.onPrimary
-                                : Theme.of(context).textTheme.bodyMedium?.color,
+                                : Theme.of(context)
+                                .textTheme
+                                .bodyMedium
+                                ?.color,
                           ),
                         ),
                       ),
@@ -370,45 +520,41 @@ class _ChapterReaderScreenState extends State<ChapterReaderScreen> {
         ),
         title: Text("${chapter!["title"]}"),
         bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(24),
+          preferredSize: const Size.fromHeight(32),
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
             child: Row(
               children: [
-                Expanded(
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(4),
-                    child: LinearProgressIndicator(
-                      value: _readingProgress,
-                      minHeight: 5,
-                      backgroundColor: Colors.grey.shade300,
-                    ),
-                  ),
+                const Icon(Icons.menu_book, size: 18),
+                const SizedBox(width: 8),
+                Text(
+                  _totalPages == 0
+                      ? 'Không có trang ảnh'
+                      : 'Trang $_currentPage / $_totalPages',
+                  style: const TextStyle(fontSize: 13),
                 ),
-                const SizedBox(width: 10),
-                SizedBox(
-                  width: 42,
-                  child: Text(
-                    '${(_readingProgress * 100).round()}%',
-                    textAlign: TextAlign.end,
-                    style: const TextStyle(fontSize: 12),
+                const Spacer(),
+                if (!_allowRemainingImages && _initialImageCount > 0)
+                  const Text(
+                    'Đang tải ảnh đầu...',
+                    style: TextStyle(fontSize: 11),
                   ),
-                ),
               ],
             ),
           ),
         ),
       ),
-
       body: ListView(
+        key: _listViewKey,
         controller: _scrollController,
+        physics: const AlwaysScrollableScrollPhysics(),
         padding: EdgeInsets.zero,
         cacheExtent: 500,
         children: [
-          for (int i = 0; i < blocks.length; i++) buildBlock(blocks[i], i),
+          for (int i = 0; i < blocks.length; i++)
+            buildBlock(blocks[i], i),
         ],
       ),
-
       bottomNavigationBar: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         color: Colors.black87,
@@ -437,6 +583,5 @@ class _ChapterReaderScreenState extends State<ChapterReaderScreen> {
         ),
       ),
     );
-    return scaffold;
   }
 }

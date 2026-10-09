@@ -3,10 +3,14 @@ import 'package:flutter/material.dart';
 
 class SequentialChapterImage extends StatefulWidget {
   final String imageUrl;
+  final bool shouldLoad;
+  final VoidCallback? onLoadFinished;
 
   const SequentialChapterImage({
     super.key,
     required this.imageUrl,
+    this.shouldLoad = true,
+    this.onLoadFinished,
   });
 
   @override
@@ -15,62 +19,88 @@ class SequentialChapterImage extends StatefulWidget {
 }
 
 class _SequentialChapterImageState extends State<SequentialChapterImage> {
-  bool _shouldLoad = false;
+  bool _notifiedFinished = false;
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
+  void _notifyFinished() {
+    if (_notifiedFinished) return;
 
-    // Chỉ bắt đầu tải khi widget gần vùng nhìn thấy.
-    if (!_shouldLoad) {
-      final renderObject = context.findRenderObject();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _notifiedFinished) return;
 
-      if (renderObject is RenderBox && renderObject.hasSize) {
-        _shouldLoad = true;
-      }
+      _notifiedFinished = true;
+      widget.onLoadFinished?.call();
+    });
+  }
 
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted && !_shouldLoad) {
-          setState(() => _shouldLoad = true);
-        }
-      });
-    }
+  Widget _placeholder() {
+    return const SizedBox(
+      width: double.infinity,
+      height: 220,
+      child: Center(
+        child: CircularProgressIndicator(),
+      ),
+    );
+  }
+
+  Widget _errorWidget() {
+    return SizedBox(
+      width: double.infinity,
+      height: 160,
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(
+              Icons.broken_image_outlined,
+              size: 36,
+              color: Colors.grey,
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Không thể tải ảnh',
+              style: TextStyle(color: Colors.grey),
+            ),
+            TextButton(
+              onPressed: () {
+                setState(() {
+                  _notifiedFinished = false;
+                });
+              },
+              child: const Text('Thử tải lại'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    if (!_shouldLoad) {
-      return const SizedBox(
-        width: double.infinity,
-        height: 220,
-        child: Center(
-          child: CircularProgressIndicator(),
-        ),
-      );
+    // Chưa đến giai đoạn tải ảnh này.
+    if (!widget.shouldLoad) {
+      return _placeholder();
     }
 
     return CachedNetworkImage(
       imageUrl: widget.imageUrl,
       width: double.infinity,
       fit: BoxFit.fitWidth,
-      placeholder: (context, url) => const SizedBox(
-        width: double.infinity,
-        height: 220,
-        child: Center(
-          child: CircularProgressIndicator(),
-        ),
-      ),
-      errorWidget: (context, url, error) => const SizedBox(
-        width: double.infinity,
-        height: 120,
-        child: Center(
-          child: Icon(
-            Icons.broken_image_outlined,
-            size: 36,
-            color: Colors.grey,
-          ),
-        ),
-      ),
+      placeholder: (context, url) => _placeholder(),
+      imageBuilder: (context, imageProvider) {
+        _notifyFinished();
+
+        return Image(
+          image: imageProvider,
+          width: double.infinity,
+          fit: BoxFit.fitWidth,
+        );
+      },
+      errorWidget: (context, url, error) {
+        // Ảnh lỗi cũng được xem là đã hoàn tất,
+        // tránh việc 3 ảnh đầu bị kẹt ở giai đoạn chờ.
+        _notifyFinished();
+        return _errorWidget();
+      },
     );
   }
 }
