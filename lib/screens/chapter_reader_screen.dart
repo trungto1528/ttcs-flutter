@@ -51,24 +51,32 @@ class _ChapterReaderScreenState extends State<ChapterReaderScreen> {
   }
 
   Future<void> _initData() async {
-    final storyData = await StoryFetcher().fetchStory(widget.storyId);
+    try {
+      final storyData = await StoryFetcher().fetchStory(widget.storyId);
+      final raw = storyData["chapters"] as List;
 
-    final raw = storyData["chapters"] as List;
+      final filtered = raw.where((c) {
+        return c["createdById"] == widget.createdById;
+      }).toList();
 
-    final filtered = raw.where((c) {
-      return c["createdById"] == widget.createdById;
-    }).toList();
+      filtered.sort(
+            (a, b) => (a["chapterNumber"] as int)
+            .compareTo(b["chapterNumber"] as int),
+      );
 
-    filtered.sort((a, b) =>
-        (a["chapterNumber"] as int).compareTo(b["chapterNumber"] as int));
+      if (!mounted) return;
 
-    setState(() {
-      chapters = filtered;
-      lastStoryTitle = storyData['title'];
-      coverUrl = storyData['coverUrl'];
-    });
+      setState(() {
+        chapters = filtered;
+        lastStoryTitle = storyData['title'];
+        coverUrl = storyData['coverUrl'];
+      });
 
-    await _fetchChapter(currentChapterId);
+      await _fetchChapter(currentChapterId);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => loading = false);
+    }
   }
 
   Future<void> _fetchChapter(int id) async {
@@ -78,8 +86,9 @@ class _ChapterReaderScreenState extends State<ChapterReaderScreen> {
       final data = await ChapterFetcher().fetchChapter(id);
 
       currentChapterId = id;
-
       _updateNextPrev();
+
+      if (!mounted) return;
 
       setState(() {
         chapter = data;
@@ -87,20 +96,24 @@ class _ChapterReaderScreenState extends State<ChapterReaderScreen> {
         lastChapterNumber = data['chapterNumber'];
         loading = false;
       });
+
       final prefs = await SharedPreferences.getInstance();
-      String? userString = prefs.getString("user");
+      final userString = prefs.getString("user");
+
       if (userString != null) {
-        final user =User.fromJson(jsonDecode(userString));
+        final user = User.fromJson(jsonDecode(userString));
+
         await LastRead().updateLastRead(
           user.id,
           widget.storyId,
           currentChapterId,
-          widget.createdById
+          widget.createdById,
         );
       } else {
-        _saveLastRead(id);
+        await _saveLastRead(id);
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() => loading = false);
     }
   }
@@ -122,7 +135,7 @@ class _ChapterReaderScreenState extends State<ChapterReaderScreen> {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt("lastStoryId", widget.storyId);
     await prefs.setInt("lastChapterId", chapterId);
-    await prefs.setInt('lastReadCreatedById',widget.createdById);
+    await prefs.setInt("lastReadCreatedById", widget.createdById);
   }
 
   void _goNext() {
@@ -145,36 +158,71 @@ class _ChapterReaderScreenState extends State<ChapterReaderScreen> {
     }
   }
 
-  Widget buildBlock(block) {
+  Widget buildBlock(dynamic block) {
     if (block["type"] == "text") {
       return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
         child: Text(
-          block["data"],
-          style: const TextStyle(fontSize: 18, height: 1.5),
+          block["data"] ?? "",
+          style: const TextStyle(
+            fontSize: 18,
+            height: 1.5,
+          ),
         ),
       );
     }
 
     if (block["type"] == "image") {
-      return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        child: CachedNetworkImage(imageUrl: '${ApiConfig.chapterImage}/${block['data']}'),
+      final imageUrl = '${ApiConfig.chapterImage}/${block['data']}';
+
+      return CachedNetworkImage(
+        imageUrl: imageUrl,
+        width: double.infinity,
+        fit: BoxFit.fitWidth,
+
+        // Hiển thị loading riêng trong lúc ảnh được tải.
+        placeholder: (context, url) {
+          return const SizedBox(
+            width: double.infinity,
+            height: 220,
+            child: Center(
+              child: CircularProgressIndicator(),
+            ),
+          );
+        },
+
+        // Hiển thị lỗi nếu không tải được ảnh.
+        errorWidget: (context, url, error) {
+          return const SizedBox(
+            width: double.infinity,
+            height: 120,
+            child: Center(
+              child: Icon(
+                Icons.broken_image_outlined,
+                size: 36,
+                color: Colors.grey,
+              ),
+            ),
+          );
+        },
       );
     }
 
-    return const SizedBox();
+    return const SizedBox.shrink();
   }
 
   @override
   Widget build(BuildContext context) {
     if (loading || chapter == null) {
       return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
       );
     }
 
     return Scaffold(
+      key: _scaffoldKey,
       drawer: Drawer(
         child: ListView(
           children: [
@@ -191,16 +239,16 @@ class _ChapterReaderScreenState extends State<ChapterReaderScreen> {
                       fit: BoxFit.cover,
                     ),
                   ),
-
                   const SizedBox(width: 12),
-
                   Expanded(
                     child: GestureDetector(
                       onTap: () {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) => StoryDetailScreen(storyId: widget.storyId),
+                            builder: (_) => StoryDetailScreen(
+                              storyId: widget.storyId,
+                            ),
                           ),
                         );
                       },
@@ -209,7 +257,7 @@ class _ChapterReaderScreenState extends State<ChapterReaderScreen> {
                         children: [
                           Text(
                             lastStoryTitle,
-                            style: TextStyle(
+                            style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
                             ),
@@ -225,13 +273,16 @@ class _ChapterReaderScreenState extends State<ChapterReaderScreen> {
                 ],
               ),
             ),
-
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 8,
+              ),
               child: GridView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                gridDelegate:
+                const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 3,
                   crossAxisSpacing: 8,
                   mainAxisSpacing: 8,
@@ -263,7 +314,10 @@ class _ChapterReaderScreenState extends State<ChapterReaderScreen> {
                                 : FontWeight.normal,
                             color: isCurrent
                                 ? Theme.of(context).colorScheme.onPrimary
-                                : Theme.of(context).textTheme.bodyMedium?.color,
+                                : Theme.of(context)
+                                .textTheme
+                                .bodyMedium
+                                ?.color,
                           ),
                         ),
                       ),
@@ -275,43 +329,58 @@ class _ChapterReaderScreenState extends State<ChapterReaderScreen> {
           ],
         ),
       ),
-      key: _scaffoldKey,
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text(
-          "${chapter!["title"]}",
-        ),
+        title: Text("${chapter!["title"]}"),
       ),
+
+      // Không đặt padding cho ListView để các ảnh nối liền nhau.
       body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [...blocks.map((b) => buildBlock(b))],
+        padding: EdgeInsets.zero,
+        children: blocks.map((b) => buildBlock(b)).toList(),
       ),
 
       bottomNavigationBar: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        padding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 10,
+        ),
         color: Colors.black87,
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             IconButton(
               onPressed: _goPrev,
-              icon: const Icon(Icons.arrow_back, color: Colors.white),
+              icon: const Icon(
+                Icons.arrow_back,
+                color: Colors.white,
+              ),
             ),
             IconButton(
-              onPressed: () =>
-                  Navigator.popUntil(context, (route) => route.isFirst),
-              icon: const Icon(Icons.home, color: Colors.white),
+              onPressed: () {
+                Navigator.popUntil(context, (route) => route.isFirst);
+              },
+              icon: const Icon(
+                Icons.home,
+                color: Colors.white,
+              ),
             ),
             IconButton(
               onPressed: () => _scaffoldKey.currentState?.openDrawer(),
-              icon: const Icon(Icons.menu, color: Colors.white),
+              icon: const Icon(
+                Icons.menu,
+                color: Colors.white,
+              ),
             ),
             IconButton(
               onPressed: _goNext,
-              icon: const Icon(Icons.arrow_forward, color: Colors.white),
+              icon: const Icon(
+                Icons.arrow_forward,
+                color: Colors.white,
+              ),
             ),
           ],
         ),
