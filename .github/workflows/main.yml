@@ -46,10 +46,10 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v3
 
       - name: Setup Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v3
         with:
           distribution: temurin
           java-version: '17'
@@ -59,7 +59,7 @@ jobs:
         with:
           flutter-version: '3.41.2'
           channel: stable
-          cache: true
+          cache : true
 
       - name: Install dependencies
         run: flutter pub get
@@ -69,7 +69,6 @@ jobs:
           flutter build apk
           --release
           --split-per-abi
-          --build-name=${{ needs.version.outputs.version }}
           --build-number=${{ needs.version.outputs.build_number }}
 
       - name: Sign APK
