@@ -15,13 +15,13 @@ import '../widget/sequential_chapter_image.dart';
 class ChapterReaderScreen extends StatefulWidget {
   final int chapterId;
   final int storyId;
-  final int createdById;
+  final String source;
 
   const ChapterReaderScreen({
     super.key,
     required this.chapterId,
     required this.storyId,
-    required this.createdById,
+    required this.source,
   });
 
   @override
@@ -80,7 +80,7 @@ class _ChapterReaderScreenState extends State<ChapterReaderScreen> {
       final raw = storyData["chapters"] as List;
 
       final filtered = raw.where((c) {
-        return c["createdById"] == widget.createdById;
+        return c["createdBy"] == widget.source;
       }).toList();
 
       filtered.sort(
@@ -184,7 +184,7 @@ class _ChapterReaderScreenState extends State<ChapterReaderScreen> {
           user.id,
           widget.storyId,
           currentChapterId,
-          widget.createdById,
+          widget.source,
         );
       } else {
         await _saveLastRead(id);
@@ -289,7 +289,7 @@ class _ChapterReaderScreenState extends State<ChapterReaderScreen> {
 
     await prefs.setInt("lastStoryId", widget.storyId);
     await prefs.setInt("lastChapterId", chapterId);
-    await prefs.setInt("lastReadCreatedById", widget.createdById);
+    await prefs.setString("lastReadCreatedById", widget.source);
   }
 
   void _goNext() {

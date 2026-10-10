@@ -1,6 +1,8 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
+import '../services/chapter_cache_manager.dart';
+
 class SequentialChapterImage extends StatefulWidget {
   final String imageUrl;
   final bool shouldLoad;
@@ -85,6 +87,7 @@ class _SequentialChapterImageState extends State<SequentialChapterImage> {
       imageUrl: widget.imageUrl,
       width: double.infinity,
       fit: BoxFit.fitWidth,
+      cacheManager: ChapterCacheManager.instance,
       placeholder: (context, url) => _placeholder(),
       imageBuilder: (context, imageProvider) {
         _notifyFinished();

@@ -1,3 +1,4 @@
+
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -20,15 +21,14 @@ class _CrawlScreenState extends State<CrawlScreen> {
   final TextEditingController searchController =
   TextEditingController();
 
-  final CrawlService crawlService =
-  CrawlService();
+  final CrawlService crawlService = CrawlService();
 
   Map<String, dynamic>? data;
-
   List<Map<String, dynamic>> searchResults = [];
 
   bool loading = false;
   bool searching = false;
+  bool importing = false;
 
   Timer? _progressTimer;
 
@@ -40,17 +40,48 @@ class _CrawlScreenState extends State<CrawlScreen> {
   }
 
   // =========================================================
+  // HELPERS
+  // =========================================================
+
+  int _asInt(dynamic value) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return int.tryParse(value?.toString() ?? '') ?? 0;
+  }
+
+  bool _isTaskDone(String message) {
+    final lower = message.toLowerCase();
+
+    return message.contains('Hoàn thành') ||
+        message.contains('Lỗi') ||
+        lower.contains('hủy') ||
+        lower.contains('huỷ');
+  }
+
+  List<dynamic> get chapters {
+    return data?['chapters'] as List? ?? [];
+  }
+
+  List<Map<String, dynamic>> get selectedChapters {
+    return chapters
+        .where((chapter) => chapter['choosen'] == true)
+        .map<Map<String, dynamic>>(
+          (chapter) => Map<String, dynamic>.from(
+        chapter as Map,
+      ),
+    )
+        .toList();
+  }
+
+  // =========================================================
   // SEARCH
   // =========================================================
 
   Future<void> searchStories() async {
-    final keyword =
-    searchController.text.trim();
+    final keyword = searchController.text.trim();
 
     if (keyword.isEmpty) {
-      _showSnackBar(
-        "Vui lòng nhập tên truyện",
-      );
+      _showSnackBar('Vui lòng nhập tên truyện');
       return;
     }
 
@@ -64,31 +95,20 @@ class _CrawlScreenState extends State<CrawlScreen> {
 
     try {
       final results =
-      await crawlService.searchStories(
-        keyword,
-      );
+      await crawlService.searchStories(keyword);
 
-      if (!mounted) {
-        return;
-      }
+      if (!mounted) return;
 
       setState(() {
         searchResults = results;
       });
 
       if (results.isEmpty) {
-        _showSnackBar(
-          "Không tìm thấy truyện",
-        );
+        _showSnackBar('Không tìm thấy truyện');
       }
     } catch (e) {
-      if (!mounted) {
-        return;
-      }
-
-      _showSnackBar(
-        "Lỗi tìm truyện: $e",
-      );
+      if (!mounted) return;
+      _showSnackBar('Lỗi tìm truyện: $e');
     } finally {
       if (mounted) {
         setState(() {
@@ -103,14 +123,12 @@ class _CrawlScreenState extends State<CrawlScreen> {
   // =========================================================
 
   Future<void> selectSearchResult(
-      Map<String, dynamic> result) async {
-    final url =
-        result['url']?.toString().trim() ?? "";
+      Map<String, dynamic> result,
+      ) async {
+    final url = result['url']?.toString().trim() ?? '';
 
     if (url.isEmpty) {
-      _showSnackBar(
-        "Không có URL truyện",
-      );
+      _showSnackBar('Không có URL truyện');
       return;
     }
 
@@ -123,27 +141,33 @@ class _CrawlScreenState extends State<CrawlScreen> {
 
     try {
       final resultData =
-      await crawlService.crawlStory(
-        url,
-      );
+      await crawlService.crawlStory(url);
 
-      if (!mounted) {
-        return;
-      }
+      if (!mounted) return;
+
+      final normalizedData =
+      Map<String, dynamic>.from(resultData);
+
+      final rawChapters =
+          normalizedData['chapters'] as List? ?? [];
+
+      // Mỗi chương có thể được chọn riêng.
+      normalizedData['chapters'] =
+          rawChapters.map((rawChapter) {
+            final chapter = Map<String, dynamic>.from(
+              rawChapter as Map,
+            );
+
+            chapter['choosen'] = true;
+            return chapter;
+          }).toList();
 
       setState(() {
-        data = resultData;
+        data = normalizedData;
       });
-
-      selectAll(true);
     } catch (e) {
-      if (!mounted) {
-        return;
-      }
-
-      _showSnackBar(
-        "Lỗi lấy thông tin truyện: $e",
-      );
+      if (!mounted) return;
+      _showSnackBar('Lỗi lấy thông tin truyện: $e');
     } finally {
       if (mounted) {
         setState(() {
@@ -169,62 +193,19 @@ class _CrawlScreenState extends State<CrawlScreen> {
   // =========================================================
 
   void selectAll(bool value) {
-    if (data == null) {
-      return;
-    }
+    if (data == null) return;
 
     setState(() {
-      final volumes =
-          data!['volumes'] as List? ?? [];
-
-      for (final volume in volumes) {
-        final chapters =
-            volume['chapters'] as List? ?? [];
-
-        for (final chapter in chapters) {
-          chapter['choosen'] = value;
-        }
+      for (final chapter in chapters) {
+        chapter['choosen'] = value;
       }
     });
   }
 
-  void toggle(
-      Map chapter,
-      bool value,
-      ) {
+  void toggle(Map chapter, bool value) {
     setState(() {
       chapter['choosen'] = value;
     });
-  }
-
-  List<Map<String, dynamic>>
-  get selectedChapters {
-    if (data == null) {
-      return [];
-    }
-
-    final result =
-    <Map<String, dynamic>>[];
-
-    final volumes =
-        data!['volumes'] as List? ?? [];
-
-    for (final volume in volumes) {
-      final chapters =
-          volume['chapters'] as List? ?? [];
-
-      for (final chapter in chapters) {
-        if (chapter['choosen'] == true) {
-          result.add(
-            Map<String, dynamic>.from(
-              chapter,
-            ),
-          );
-        }
-      }
-    }
-
-    return result;
   }
 
   // =========================================================
@@ -232,30 +213,51 @@ class _CrawlScreenState extends State<CrawlScreen> {
   // =========================================================
 
   Future<void> submit() async {
-    if (data == null ||
-        selectedChapters.isEmpty) {
-      _showSnackBar(
-        "Vui lòng chọn ít nhất 1 chương",
-      );
-
+    if (data == null || selectedChapters.isEmpty) {
+      _showSnackBar('Vui lòng chọn ít nhất 1 chương');
       return;
     }
 
+    if (importing) return;
+
+    setState(() {
+      importing = true;
+    });
+
     try {
-      final res =
-      await crawlService.importStory(
-        data!,
+      // Chỉ gửi những chương đã được chọn.
+      final payload = Map<String, dynamic>.from(data!);
+      payload['chapters'] = selectedChapters;
+
+      final res = await crawlService.importStory(
+        payload,
         widget.userId,
       );
 
-      final taskId =
-      res['taskId'].toString();
+      final taskId = res['taskId']?.toString();
+
+      if (taskId == null ||
+          taskId.isEmpty ||
+          taskId == 'null') {
+        _showSnackBar(
+          'Không nhận được taskId từ server',
+        );
+        return;
+      }
+
+      if (!mounted) return;
 
       _showProgressSheet(taskId);
     } catch (e) {
-      _showSnackBar(
-        "Lỗi Import: $e",
-      );
+      if (mounted) {
+        _showSnackBar('Lỗi Import: $e');
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          importing = false;
+        });
+      }
     }
   }
 
@@ -263,15 +265,10 @@ class _CrawlScreenState extends State<CrawlScreen> {
   // SNACKBAR
   // =========================================================
 
-  void _showSnackBar(
-      String message,
-      ) {
-    if (!mounted) {
-      return;
-    }
+  void _showSnackBar(String message) {
+    if (!mounted) return;
 
-    ScaffoldMessenger.of(context)
-        .showSnackBar(
+    ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
       ),
@@ -283,177 +280,128 @@ class _CrawlScreenState extends State<CrawlScreen> {
   // =========================================================
 
   void _showAllTasksSheet() {
-    showModalBottomSheet(
+    showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      shape:
-      const RoundedRectangleBorder(
-        borderRadius:
-        BorderRadius.vertical(
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(
           top: Radius.circular(20),
         ),
       ),
-      builder: (context) {
+      builder: (sheetContext) {
         return SizedBox(
           height:
-          MediaQuery.of(context)
-              .size
-              .height *
-              0.75,
-          child: FutureBuilder<
-              Map<String, dynamic>>(
-            future:
-            crawlService.getAllTasks(),
-            builder:
-                (context, snapshot) {
+          MediaQuery.of(sheetContext).size.height * 0.75,
+          child: FutureBuilder<Map<String, dynamic>>(
+            future: crawlService.getAllTasks(),
+            builder: (context, snapshot) {
               if (snapshot.connectionState ==
                   ConnectionState.waiting) {
                 return const Center(
-                  child:
-                  CircularProgressIndicator(),
+                  child: CircularProgressIndicator(),
                 );
               }
 
               if (snapshot.hasError) {
                 return Center(
-                  child: Text(
-                    "Lỗi: ${snapshot.error}",
-                  ),
+                  child: Text('Lỗi: ${snapshot.error}'),
                 );
               }
 
-              final tasks =
-                  snapshot.data ?? {};
+              final tasks = snapshot.data ?? {};
 
               if (tasks.isEmpty) {
                 return const Center(
-                  child: Text(
-                    "Không có tiến trình nào",
-                  ),
+                  child: Text('Không có tiến trình nào'),
                 );
               }
 
               return Column(
                 children: [
                   const Padding(
-                    padding:
-                    EdgeInsets.all(16),
+                    padding: EdgeInsets.all(16),
                     child: Text(
-                      "Danh sách tiến độ",
+                      'Danh sách tiến độ',
                       style: TextStyle(
                         fontSize: 18,
-                        fontWeight:
-                        FontWeight.bold,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
                   ),
                   Expanded(
-                    child:
-                    ListView.builder(
-                      itemCount:
-                      tasks.length,
-                      itemBuilder:
-                          (context, index) {
+                    child: ListView.builder(
+                      itemCount: tasks.length,
+                      itemBuilder: (context, index) {
                         final taskId =
-                        tasks.keys
-                            .elementAt(
-                          index,
+                        tasks.keys.elementAt(index);
+
+                        final task = Map<String, dynamic>.from(
+                          tasks[taskId] as Map,
                         );
 
-                        final task =
-                        tasks[taskId];
+                        final processed =
+                        _asInt(task['processed']);
 
-                        final int processed =
-                            task['processed'] ??
-                                0;
+                        final total = _asInt(task['total']);
 
-                        final int total =
-                            task['total'] ??
-                                0;
+                        final double progress = total > 0
+                            ? (processed / total)
+                            .clamp(0.0, 1.0)
+                            : 0.0;
 
-                        final double progress =
-                        total > 0
-                            ? processed /
-                            total
-                            : 0;
+                        final message =
+                            task['message']?.toString() ?? '';
 
-                        final String message =
-                            task['message']
-                                ?.toString() ??
-                                "";
-
-                        final bool isDone =
-                            message.contains(
-                              "Hoàn thành",
-                            ) ||
-                                message.contains(
-                                  "hủy",
-                                ) ||
-                                message.contains(
-                                  "Lỗi",
-                                );
+                        final isDone = _isTaskDone(message);
 
                         return ListTile(
                           title: Text(
-                            task['title']
-                                ?.toString() ??
-                                "",
+                            task['title']?.toString() ?? '',
                             maxLines: 1,
-                            overflow:
-                            TextOverflow
-                                .ellipsis,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                          subtitle:
-                          Column(
+                          subtitle: Column(
                             crossAxisAlignment:
-                            CrossAxisAlignment
-                                .start,
+                            CrossAxisAlignment.start,
                             children: [
-                              const SizedBox(
-                                height: 6,
-                              ),
+                              const SizedBox(height: 6),
                               LinearProgressIndicator(
-                                value:
-                                progress,
+                                value: progress,
                               ),
-                              const SizedBox(
-                                height: 4,
-                              ),
+                              const SizedBox(height: 4),
                               Text(
-                                "$processed/$total - $message",
+                                '$processed/$total - $message',
                               ),
                             ],
                           ),
                           trailing: isDone
                               ? const Icon(
-                            Icons
-                                .check_circle,
-                            color:
-                            Colors.green,
+                            Icons.check_circle,
+                            color: Colors.green,
                           )
                               : IconButton(
-                            icon:
-                            const Icon(
-                              Icons
-                                  .stop_circle_outlined,
-                              color:
-                              Colors.red,
+                            icon: const Icon(
+                              Icons.stop_circle_outlined,
+                              color: Colors.red,
                             ),
-                            onPressed:
-                                () async {
-                              await crawlService
-                                  .cancelTask(
-                                taskId,
-                              );
+                            tooltip: 'Hủy task',
+                            onPressed: () async {
+                              try {
+                                await crawlService.cancelTask(
+                                  taskId.toString(),
+                                );
 
-                              if (context
-                                  .mounted) {
-                                Navigator.pop(
-                                  context,
+                                if (!sheetContext.mounted) {
+                                  return;
+                                }
+
+                                Navigator.pop(sheetContext);
+                                _showAllTasksSheet();
+                              } catch (e) {
+                                _showSnackBar(
+                                  'Lỗi hủy task: $e',
                                 );
                               }
-
-                              _showAllTasksSheet();
                             },
                           ),
                         );
@@ -461,19 +409,14 @@ class _CrawlScreenState extends State<CrawlScreen> {
                     ),
                   ),
                   Padding(
-                    padding:
-                    const EdgeInsets.only(
+                    padding: const EdgeInsets.only(
                       bottom: 16,
                     ),
                     child: TextButton(
-                      onPressed: () =>
-                          Navigator.pop(
-                            context,
-                          ),
-                      child:
-                      const Text(
-                        "Đóng",
-                      ),
+                      onPressed: () {
+                        Navigator.pop(sheetContext);
+                      },
+                      child: const Text('Đóng'),
                     ),
                   ),
                 ],
@@ -489,231 +432,51 @@ class _CrawlScreenState extends State<CrawlScreen> {
   // PROGRESS
   // =========================================================
 
-  void _showProgressSheet(
-      String taskId) {
+  void _showProgressSheet(String taskId) {
     _progressTimer?.cancel();
 
-    showModalBottomSheet(
+    showModalBottomSheet<void>(
       context: context,
       isDismissible: false,
       enableDrag: false,
-      shape:
-      const RoundedRectangleBorder(
-        borderRadius:
-        BorderRadius.vertical(
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(
           top: Radius.circular(20),
         ),
       ),
-      builder: (context) {
-        return StatefulBuilder(
-          builder:
-              (context, setModalState) {
-            _progressTimer =
-                Timer.periodic(
-                  const Duration(
-                    seconds: 2,
-                  ),
-                      (_) {
-                    if (context.mounted) {
-                      setModalState(() {});
-                    }
-                  },
-                );
+      builder: (sheetContext) {
+        return _ProgressSheetContent(
+          taskId: taskId,
+          crawlService: crawlService,
+          onCancel: () async {
+            try {
+              await crawlService.cancelTask(taskId);
 
-            return FutureBuilder<
-                Map<String, dynamic>>(
-              future: crawlService
-                  .getAllTasks(),
-              builder:
-                  (context, snapshot) {
-                if (!snapshot.hasData) {
-                  return const SizedBox(
-                    height: 220,
-                    child: Center(
-                      child:
-                      CircularProgressIndicator(),
-                    ),
-                  );
-                }
+              _progressTimer?.cancel();
 
-                final allTasks =
-                snapshot.data!;
+              if (!sheetContext.mounted) return;
 
-                final task =
-                allTasks[taskId];
+              Navigator.pop(sheetContext);
 
-                if (task == null) {
-                  return const SizedBox(
-                    height: 220,
-                    child: Center(
-                      child: Text(
-                        "Không tìm thấy task",
-                      ),
-                    ),
-                  );
-                }
+              _showSnackBar('Đã gửi yêu cầu dừng.');
+            } catch (e) {
+              _showSnackBar('Lỗi hủy task: $e');
+            }
+          },
+          onClose: () {
+            _progressTimer?.cancel();
 
-                final int processed =
-                    task['processed'] ??
-                        0;
-
-                final int total =
-                    task['total'] ??
-                        0;
-
-                final double progress =
-                total > 0
-                    ? processed / total
-                    : 0;
-
-                final String message =
-                    task['message']
-                        ?.toString() ??
-                        "";
-
-                final bool isDone =
-                    message.contains(
-                      "Hoàn thành",
-                    ) ||
-                        message.contains(
-                          "Lỗi",
-                        ) ||
-                        message.contains(
-                          "hủy",
-                        );
-
-                return Padding(
-                  padding:
-                  const EdgeInsets.all(
-                    24,
-                  ),
-                  child: Column(
-                    mainAxisSize:
-                    MainAxisSize.min,
-                    children: [
-                      Text(
-                        task['title']
-                            ?.toString() ??
-                            "",
-                        style:
-                        const TextStyle(
-                          fontSize: 18,
-                          fontWeight:
-                          FontWeight.bold,
-                        ),
-                        textAlign:
-                        TextAlign.center,
-                      ),
-                      const SizedBox(
-                        height: 20,
-                      ),
-                      LinearProgressIndicator(
-                        value: progress,
-                        minHeight: 10,
-                        borderRadius:
-                        BorderRadius
-                            .circular(
-                          5,
-                        ),
-                      ),
-                      const SizedBox(
-                        height: 15,
-                      ),
-                      Text(
-                        "Tiến độ: $processed / $total chương",
-                      ),
-                      const SizedBox(
-                        height: 4,
-                      ),
-                      Text(
-                        "Trạng thái: $message",
-                        style: TextStyle(
-                          color: isDone
-                              ? message.contains(
-                            "Hoàn thành",
-                          )
-                              ? Colors.green
-                              : Colors.red
-                              : Colors.blue,
-                          fontWeight:
-                          FontWeight.w500,
-                        ),
-                      ),
-                      const SizedBox(
-                        height: 25,
-                      ),
-                      Row(
-                        children: [
-                          if (!isDone)
-                            Expanded(
-                              child:
-                              OutlinedButton(
-                                onPressed:
-                                    () async {
-                                  await crawlService
-                                      .cancelTask(
-                                    taskId,
-                                  );
-
-                                  _progressTimer
-                                      ?.cancel();
-
-                                  if (context
-                                      .mounted) {
-                                    Navigator.pop(
-                                      context,
-                                    );
-                                  }
-
-                                  _showSnackBar(
-                                    "Đã gửi yêu cầu dừng.",
-                                  );
-                                },
-                                style:
-                                OutlinedButton
-                                    .styleFrom(
-                                  foregroundColor:
-                                  Colors.red,
-                                ),
-                                child:
-                                const Text(
-                                  "Hủy cào",
-                                ),
-                              ),
-                            ),
-                          if (!isDone)
-                            const SizedBox(
-                              width: 12,
-                            ),
-                          Expanded(
-                            child:
-                            ElevatedButton(
-                              onPressed: () {
-                                _progressTimer
-                                    ?.cancel();
-
-                                Navigator.pop(
-                                  context,
-                                );
-                              },
-                              child: Text(
-                                isDone
-                                    ? "Xong"
-                                    : "Chạy ngầm",
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                );
-              },
-            );
+            if (sheetContext.mounted) {
+              Navigator.pop(sheetContext);
+            }
           },
         );
       },
-    );
+    ).whenComplete(() {
+      _progressTimer?.cancel();
+      _progressTimer = null;
+    });
   }
 
   // =========================================================
@@ -724,8 +487,7 @@ class _CrawlScreenState extends State<CrawlScreen> {
     if (searching) {
       return const Expanded(
         child: Center(
-          child:
-          CircularProgressIndicator(),
+          child: CircularProgressIndicator(),
         ),
       );
     }
@@ -733,99 +495,59 @@ class _CrawlScreenState extends State<CrawlScreen> {
     if (searchResults.isEmpty) {
       return const Expanded(
         child: Center(
-          child: Text(
-            "Nhập tên truyện để tìm kiếm",
-          ),
+          child: Text('Nhập tên truyện để tìm kiếm'),
         ),
       );
     }
 
     return Expanded(
       child: ListView.separated(
-        padding:
-        const EdgeInsets.all(12),
-        itemCount:
-        searchResults.length,
+        padding: const EdgeInsets.all(12),
+        itemCount: searchResults.length,
         separatorBuilder: (_, __) =>
-        const SizedBox(
-          height: 8,
-        ),
-        itemBuilder:
-            (context, index) {
-          final result =
-          searchResults[index];
+        const SizedBox(height: 8),
+        itemBuilder: (context, index) {
+          final result = searchResults[index];
 
           final title =
-              result['title']
-                  ?.toString() ??
-                  "";
+              result['title']?.toString() ?? '';
 
           final cover =
-              result['cover']
-                  ?.toString() ??
-                  "";
+              result['cover']?.toString() ?? '';
 
           return Card(
-            clipBehavior:
-            Clip.antiAlias,
+            clipBehavior: Clip.antiAlias,
             child: ListTile(
-              contentPadding:
-              const EdgeInsets.all(
-                8,
-              ),
+              contentPadding: const EdgeInsets.all(8),
               leading: ClipRRect(
-                borderRadius:
-                BorderRadius.circular(
-                  6,
-                ),
+                borderRadius: BorderRadius.circular(6),
                 child: cover.isNotEmpty
                     ? Image.network(
                   cover,
                   width: 60,
                   height: 85,
                   fit: BoxFit.cover,
-                  errorBuilder:
-                      (
-                      _,
-                      __,
-                      ___,
-                      ) {
-                    return _searchCoverPlaceholder();
-                  },
+                  errorBuilder: (_, __, ___) =>
+                      _searchCoverPlaceholder(),
                 )
                     : _searchCoverPlaceholder(),
               ),
               title: Text(
                 title,
                 maxLines: 2,
-                overflow:
-                TextOverflow.ellipsis,
-                style:
-                const TextStyle(
-                  fontWeight:
-                  FontWeight.w600,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w600,
                 ),
               ),
-              subtitle:
-              const Padding(
-                padding:
-                EdgeInsets.only(
-                  top: 6,
-                ),
-                child: Text(
-                  "MangaRead",
-                ),
+              subtitle: const Padding(
+                padding: EdgeInsets.only(top: 6),
+                child: Text('MangaRead'),
               ),
-              trailing:
-              const Icon(
-                Icons.chevron_right,
-              ),
+              trailing: const Icon(Icons.chevron_right),
               onTap: loading
                   ? null
-                  : () =>
-                  selectSearchResult(
-                    result,
-                  ),
+                  : () => selectSearchResult(result),
             ),
           );
         },
@@ -850,116 +572,79 @@ class _CrawlScreenState extends State<CrawlScreen> {
   // =========================================================
 
   @override
-  Widget build(
-      BuildContext context) {
-    final volumes =
-        data?['volumes'] as List? ??
-            [];
+  Widget build(BuildContext context) {
+    final chapterList = chapters;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          "Cào truyện",
-        ),
+        title: const Text('Cào truyện'),
         actions: [
           IconButton(
-            icon: const Icon(
-              Icons.assignment_outlined,
-            ),
-            tooltip:
-            "Tiến độ cào",
-            onPressed:
-            _showAllTasksSheet,
+            icon: const Icon(Icons.assignment_outlined),
+            tooltip: 'Tiến độ cào',
+            onPressed: _showAllTasksSheet,
           ),
           if (data != null)
             IconButton(
-              icon: const Icon(
-                Icons.search,
-              ),
-              tooltip:
-              "Tìm truyện khác",
-              onPressed: loading
-                  ? null
-                  : backToSearch,
+              icon: const Icon(Icons.search),
+              tooltip: 'Tìm truyện khác',
+              onPressed: loading ? null : backToSearch,
             ),
         ],
       ),
-
-      floatingActionButton:
-      data == null
+      floatingActionButton: data == null
           ? null
-          : FloatingActionButton
-          .extended(
-        onPressed: submit,
-        icon: const Icon(
-          Icons.cloud_download,
-        ),
+          : FloatingActionButton.extended(
+        onPressed: importing ? null : submit,
+        icon: importing
+            ? const SizedBox(
+          width: 18,
+          height: 18,
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+          ),
+        )
+            : const Icon(Icons.cloud_download),
         label: Text(
-          "Import (${selectedChapters.length})",
+          importing
+              ? 'Đang import...'
+              : 'Import (${selectedChapters.length})',
         ),
       ),
-
       body: Column(
         children: [
           Padding(
-            padding:
-            const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(12),
             child: TextField(
-              controller:
-              searchController,
-              textInputAction:
-              TextInputAction.search,
-              decoration:
-              InputDecoration(
-                hintText:
-                "Nhập tên truyện",
-                prefixIcon:
-                const Icon(
-                  Icons.search,
+              controller: searchController,
+              textInputAction: TextInputAction.search,
+              decoration: InputDecoration(
+                hintText: 'Nhập tên truyện',
+                prefixIcon: const Icon(Icons.search),
+                suffixIcon: IconButton(
+                  icon: const Icon(Icons.search),
+                  onPressed: searching ? null : searchStories,
                 ),
-                suffixIcon:
-                IconButton(
-                  icon: const Icon(
-                    Icons.search,
-                  ),
-                  onPressed:
-                  searching
-                      ? null
-                      : searchStories,
-                ),
-                border:
-                OutlineInputBorder(
-                  borderRadius:
-                  BorderRadius.circular(
-                    12,
-                  ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
                 ),
               ),
-              onSubmitted: (_) =>
-                  searchStories(),
+              onSubmitted: (_) => searchStories(),
             ),
           ),
-
           if (loading)
             const LinearProgressIndicator(),
-
           if (data == null)
             _buildSearchResults(),
-
           if (data != null)
             Expanded(
               child: ListView(
-                padding:
-                const EdgeInsets.only(
-                  bottom: 80,
-                ),
+                padding: const EdgeInsets.only(bottom: 80),
                 children: [
                   _buildStoryHeader(),
                   _buildInformation(),
                   _buildActionButtons(),
-                  _buildVolumeList(
-                    volumes,
-                  ),
+                  _buildChapterList(chapterList),
                 ],
               ),
             ),
@@ -973,100 +658,60 @@ class _CrawlScreenState extends State<CrawlScreen> {
   // =========================================================
 
   Widget _buildStoryHeader() {
-    final volumes =
-        data!['volumes'] as List? ??
-            [];
-
-    int totalChapters = 0;
-
-    for (final volume in volumes) {
-      final chapters =
-          volume['chapters']
-          as List? ??
-              [];
-
-      totalChapters +=
-          chapters.length;
-    }
+    final chapterList = chapters;
 
     return Padding(
-      padding:
-      const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(16),
       child: Column(
-        crossAxisAlignment:
-        CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            crossAxisAlignment:
-            CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               ClipRRect(
-                borderRadius:
-                BorderRadius.circular(
-                  8,
-                ),
-                child:
-                data!['cover'] !=
-                    null &&
-                    data!['cover']
-                        .toString()
-                        .isNotEmpty
+                borderRadius: BorderRadius.circular(8),
+                child: data!['cover'] != null &&
+                    data!['cover'].toString().isNotEmpty
                     ? Image.network(
-                  data!['cover'],
+                  data!['cover'].toString(),
                   width: 100,
                   height: 140,
                   fit: BoxFit.cover,
-                  errorBuilder:
-                      (
-                      context,
-                      error,
-                      stackTrace,
-                      ) {
-                    return _coverPlaceholder();
-                  },
+                  errorBuilder: (_, __, ___) =>
+                      _coverPlaceholder(),
                 )
                     : _coverPlaceholder(),
               ),
-              const SizedBox(
-                width: 16,
-              ),
+              const SizedBox(width: 16),
               Expanded(
                 child: Column(
-                  crossAxisAlignment:
-                  CrossAxisAlignment
-                      .start,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      data!['title']
-                          ?.toString() ??
-                          "",
-                      style:
-                      const TextStyle(
+                      data!['title']?.toString() ?? '',
+                      style: const TextStyle(
                         fontSize: 18,
-                        fontWeight:
-                        FontWeight.bold,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
-                    const SizedBox(
-                      height: 8,
+                    const SizedBox(height: 8),
+                    Text(
+                      'Tác giả: '
+                          '${data!['author']?.toString().isNotEmpty == true ? data!['author'] : 'Ẩn danh'}',
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Tổng chương: ${chapterList.length}',
                     ),
                     Text(
-                      "Tác giả: ${data!['author']?.toString().isNotEmpty == true ? data!['author'] : "Ẩn danh"}",
-                    ),
-                    const SizedBox(
-                      height: 4,
-                    ),
-                    Text(
-                      "Tổng chương: $totalChapters",
+                      'Đã chọn: ${selectedChapters.length}',
                     ),
                   ],
                 ),
               ),
             ],
           ),
-          const SizedBox(
-            height: 12,
-          ),
+          const SizedBox(height: 12),
           _buildDescription(),
         ],
       ),
@@ -1091,41 +736,30 @@ class _CrawlScreenState extends State<CrawlScreen> {
 
   Widget _buildDescription() {
     final description =
-        data!['description']
-            ?.toString() ??
-            "";
+        data!['description']?.toString() ?? '';
 
     if (description.isEmpty) {
-      return const SizedBox();
+      return const SizedBox.shrink();
     }
 
     return ExpansionTile(
-      tilePadding:
-      EdgeInsets.zero,
+      tilePadding: EdgeInsets.zero,
       title: const Text(
-        "Mô tả truyện",
+        'Mô tả truyện',
         style: TextStyle(
           fontSize: 14,
-          fontWeight:
-          FontWeight.bold,
+          fontWeight: FontWeight.bold,
         ),
       ),
       children: [
         Container(
           width: double.infinity,
-          padding:
-          const EdgeInsets.all(12),
-          decoration:
-          BoxDecoration(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
             color: Colors.grey[100],
-            borderRadius:
-            BorderRadius.circular(
-              8,
-            ),
+            borderRadius: BorderRadius.circular(8),
           ),
-          child: Text(
-            description,
-          ),
+          child: Text(description),
         ),
       ],
     );
@@ -1137,66 +771,49 @@ class _CrawlScreenState extends State<CrawlScreen> {
 
   Widget _buildInformation() {
     final information =
-        data!['information']
-        as List? ??
-            [];
+        data!['information'] as List? ?? [];
 
     if (information.isEmpty) {
-      return const SizedBox();
+      return const SizedBox.shrink();
     }
 
     return Padding(
-      padding:
-      const EdgeInsets.symmetric(
-        horizontal: 16,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Card(
         elevation: 0,
         child: ExpansionTile(
           initiallyExpanded: true,
           title: const Text(
-            "Thông tin truyện",
+            'Thông tin truyện',
             style: TextStyle(
-              fontWeight:
-              FontWeight.bold,
+              fontWeight: FontWeight.bold,
             ),
           ),
           children: [
             Padding(
-              padding:
-              const EdgeInsets.fromLTRB(
+              padding: const EdgeInsets.fromLTRB(
                 16,
                 0,
                 16,
                 12,
               ),
               child: Column(
-                children:
-                information
-                    .map<Widget>(
-                      (item) {
-                    final label =
-                        item['label']
-                            ?.toString() ??
-                            "";
+                children: information.map<Widget>((item) {
+                  final info =
+                  Map<String, dynamic>.from(item as Map);
 
-                    final value =
-                        item['value']
-                            ?.toString() ??
-                            "";
+                  final label =
+                      info['label']?.toString() ?? '';
 
-                    if (label.isEmpty &&
-                        value.isEmpty) {
-                      return const SizedBox();
-                    }
+                  final value =
+                      info['value']?.toString() ?? '';
 
-                    return _buildInfoRow(
-                      label,
-                      value,
-                    );
-                  },
-                )
-                    .toList(),
+                  if (label.isEmpty && value.isEmpty) {
+                    return const SizedBox.shrink();
+                  }
+
+                  return _buildInfoRow(label, value);
+                }).toList(),
               ),
             ),
           ],
@@ -1205,36 +822,24 @@ class _CrawlScreenState extends State<CrawlScreen> {
     );
   }
 
-  Widget _buildInfoRow(
-      String label,
-      String value) {
+  Widget _buildInfoRow(String label, String value) {
     return Padding(
-      padding:
-      const EdgeInsets.symmetric(
-        vertical: 7,
-      ),
+      padding: const EdgeInsets.symmetric(vertical: 7),
       child: Row(
-        crossAxisAlignment:
-        CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
             width: 105,
             child: Text(
               label,
-              style:
-              const TextStyle(
-                fontWeight:
-                FontWeight.w600,
+              style: const TextStyle(
+                fontWeight: FontWeight.w600,
               ),
             ),
           ),
-          const SizedBox(
-            width: 12,
-          ),
+          const SizedBox(width: 12),
           Expanded(
-            child: Text(
-              value,
-            ),
+            child: Text(value),
           ),
         ],
       ),
@@ -1247,34 +852,20 @@ class _CrawlScreenState extends State<CrawlScreen> {
 
   Widget _buildActionButtons() {
     return Padding(
-      padding:
-      const EdgeInsets.symmetric(
-        horizontal: 16,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
         children: [
           TextButton.icon(
-            onPressed: () =>
-                selectAll(true),
-            icon: const Icon(
-              Icons.check_box,
-            ),
-            label:
-            const Text(
-              "Tất cả",
-            ),
+            onPressed: () => selectAll(true),
+            icon: const Icon(Icons.check_box),
+            label: const Text('Tất cả'),
           ),
           TextButton.icon(
-            onPressed: () =>
-                selectAll(false),
+            onPressed: () => selectAll(false),
             icon: const Icon(
-              Icons
-                  .check_box_outline_blank,
+              Icons.check_box_outline_blank,
             ),
-            label:
-            const Text(
-              "Bỏ chọn",
-            ),
+            label: const Text('Bỏ chọn'),
           ),
         ],
       ),
@@ -1282,63 +873,278 @@ class _CrawlScreenState extends State<CrawlScreen> {
   }
 
   // =========================================================
-  // CHAPTER LIST
+  // CHAPTER LIST - FLAT LIST, NO VOLUMES
   // =========================================================
 
-  Widget _buildVolumeList(
-      List volumes) {
-    return Column(
-      children: volumes
-          .map<Widget>(
-            (volume) {
-          final chapters =
-              volume['chapters']
-              as List? ??
-                  [];
+  Widget _buildChapterList(List chapterList) {
+    if (chapterList.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.all(24),
+        child: Center(
+          child: Text('Truyện chưa có chương nào'),
+        ),
+      );
+    }
 
-          return ExpansionTile(
-            initiallyExpanded:
-            true,
-            title: Text(
-              volume['title']
-                  ?.toString() ??
-                  "",
-              style:
-              const TextStyle(
-                fontWeight:
-                FontWeight.bold,
+    return Column(
+      children: chapterList.map<Widget>((rawChapter) {
+        final chapter = rawChapter as Map;
+
+        final title =
+            chapter['title']?.toString() ?? '';
+
+        final chapterNumber =
+        chapter['chapterNumber'];
+
+        return CheckboxListTile(
+          value: chapter['choosen'] == true,
+          onChanged: (value) {
+            toggle(chapter, value ?? false);
+          },
+          title: Text(
+            title,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+          subtitle: chapterNumber == null
+              ? null
+              : Text('Chương $chapterNumber'),
+          dense: true,
+          controlAffinity:
+          ListTileControlAffinity.leading,
+        );
+      }).toList(),
+    );
+  }
+}
+
+// =============================================================
+// PROGRESS SHEET
+// =============================================================
+
+class _ProgressSheetContent extends StatefulWidget {
+  final String taskId;
+  final CrawlService crawlService;
+  final Future<void> Function() onCancel;
+  final VoidCallback onClose;
+
+  const _ProgressSheetContent({
+    required this.taskId,
+    required this.crawlService,
+    required this.onCancel,
+    required this.onClose,
+  });
+
+  @override
+  State<_ProgressSheetContent> createState() =>
+      _ProgressSheetContentState();
+}
+
+class _ProgressSheetContentState
+    extends State<_ProgressSheetContent> {
+  Timer? _timer;
+
+  Map<String, dynamic>? _task;
+  Object? _error;
+
+  bool _loading = true;
+  bool _canceling = false;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _refreshTask();
+
+    _timer = Timer.periodic(
+      const Duration(seconds: 2),
+          (_) => _refreshTask(),
+    );
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  int _asInt(dynamic value) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+
+    return int.tryParse(
+      value?.toString() ?? '',
+    ) ??
+        0;
+  }
+
+  bool _isDone(String message) {
+    final lower = message.toLowerCase();
+
+    return message.contains('Hoàn thành') ||
+        message.contains('Lỗi') ||
+        lower.contains('hủy') ||
+        lower.contains('huỷ');
+  }
+
+  Future<void> _refreshTask() async {
+    try {
+      final allTasks =
+      await widget.crawlService.getAllTasks();
+
+      if (!mounted) return;
+
+      final rawTask = allTasks[widget.taskId];
+
+      setState(() {
+        _task = rawTask == null
+            ? null
+            : Map<String, dynamic>.from(
+          rawTask as Map,
+        );
+
+        _error = null;
+        _loading = false;
+      });
+
+      final message =
+          _task?['message']?.toString() ?? '';
+
+      if (_isDone(message)) {
+        _timer?.cancel();
+      }
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        _error = e;
+        _loading = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_loading && _task == null) {
+      return const SizedBox(
+        height: 220,
+        child: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
+    if (_error != null && _task == null) {
+      return SizedBox(
+        height: 220,
+        child: Center(
+          child: Text('Lỗi tải tiến độ: $_error'),
+        ),
+      );
+    }
+
+    if (_task == null) {
+      return const SizedBox(
+        height: 220,
+        child: Center(
+          child: Text('Không tìm thấy task'),
+        ),
+      );
+    }
+
+    final processed = _asInt(_task!['processed']);
+    final total = _asInt(_task!['total']);
+
+    final double progress = total > 0
+        ? (processed / total).clamp(0.0, 1.0)
+        : 0.0;
+
+    final message =
+        _task!['message']?.toString() ?? '';
+
+    final isDone = _isDone(message);
+
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              _task!['title']?.toString() ?? '',
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 20),
+            LinearProgressIndicator(
+              value: progress,
+              minHeight: 10,
+              borderRadius: BorderRadius.circular(5),
+            ),
+            const SizedBox(height: 15),
+            Text('Tiến độ: $processed / $total chương'),
+            const SizedBox(height: 4),
+            Text(
+              'Trạng thái: $message',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: isDone
+                    ? (message.contains('Hoàn thành')
+                    ? Colors.green
+                    : Colors.red)
+                    : Colors.blue,
+                fontWeight: FontWeight.w500,
               ),
             ),
-            children:
-            chapters
-                .map<Widget>(
-                  (chapter) {
-                return CheckboxListTile(
-                  value:
-                  chapter['choosen'] ??
-                      false,
-                  onChanged:
-                      (value) {
-                    toggle(
-                      chapter,
-                      value ??
-                          false,
-                    );
-                  },
-                  title: Text(
-                    chapter['title']
-                        ?.toString() ??
-                        "",
+            const SizedBox(height: 25),
+            Row(
+              children: [
+                if (!isDone)
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: _canceling
+                          ? null
+                          : () async {
+                        setState(() {
+                          _canceling = true;
+                        });
+
+                        await widget.onCancel();
+
+                        if (mounted) {
+                          setState(() {
+                            _canceling = false;
+                          });
+                        }
+                      },
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.red,
+                      ),
+                      child: Text(
+                        _canceling
+                            ? 'Đang hủy...'
+                            : 'Hủy cào',
+                      ),
+                    ),
                   ),
-                  dense: true,
-                );
-              },
-            )
-                .toList(),
-          );
-        },
-      )
-          .toList(),
+                if (!isDone)
+                  const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: widget.onClose,
+                    child: Text(
+                      isDone ? 'Xong' : 'Chạy ngầm',
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

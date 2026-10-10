@@ -5,7 +5,7 @@ class User {
   String displayName;
   final int lastReadStoryId;
   final int lastReadChapterId;
-  final int lastReadCreatedById;
+  final String lastReadCreatedBy;
   final String role;
 
   User({
@@ -15,7 +15,7 @@ class User {
     required this.displayName,
     required this.lastReadStoryId,
     required this.lastReadChapterId,
-    required this.lastReadCreatedById,
+    required this.lastReadCreatedBy,
     required this.role
   });
 
@@ -27,7 +27,7 @@ class User {
       displayName: json['displayName'],
       lastReadStoryId: json['lastReadStoryId'],
       lastReadChapterId: json['lastReadChapterId'],
-      lastReadCreatedById: json['lastReadCreatedById'],
+      lastReadCreatedBy: json['lastReadCreatedBy'],
       role: json['role']
     );
   }
@@ -40,7 +40,7 @@ class User {
       "displayName":displayName,
       "lastReadStoryId":lastReadStoryId,
       "lastReadChapterId":lastReadChapterId,
-      'lastReadCreatedById':lastReadCreatedById,
+      'lastReadCreatedBy':lastReadCreatedBy,
       'role': role
     };
   }

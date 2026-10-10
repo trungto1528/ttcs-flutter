@@ -227,6 +227,7 @@ class _StoryDetailScreenState extends State<StoryDetailScreen> {
   }
 
   // Thông tin truyện.
+  // Thông tin truyện có thể thu gọn/mở rộng.
   Widget _buildInformation() {
     final List information = story['information'] ?? [];
 
@@ -236,77 +237,90 @@ class _StoryDetailScreenState extends State<StoryDetailScreen> {
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Thông tin truyện',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Theme.of(context).cardColor,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: Colors.grey.shade200,
           ),
-          const SizedBox(height: 10),
-          Container(
-            decoration: BoxDecoration(
-              color: Theme.of(context).cardColor,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: Colors.grey.shade200,
+        ),
+        child: Theme(
+          data: Theme.of(context).copyWith(
+            dividerColor: Colors.transparent,
+          ),
+          child: ExpansionTile(
+            initiallyExpanded: false,
+            tilePadding: const EdgeInsets.symmetric(
+              horizontal: 14,
+            ),
+            childrenPadding: const EdgeInsets.only(
+              bottom: 8,
+            ),
+            title: const Text(
+              'Thông tin thêm',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
               ),
             ),
-            child: Column(
-              children: [
-                ...information.asMap().entries.map((entry) {
-                  final index = entry.key;
-                  final item = entry.value;
-
-                  final label = item['label']?.toString() ?? '';
-                  final value = item['value']?.toString() ?? '';
-
-                  return Column(
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 10,
-                        ),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            SizedBox(
-                              width: 100,
-                              child: Text(
-                                label,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Text(
-                                value,
-                                style: TextStyle(
-                                  color: Colors.grey.shade700,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      if (index != information.length - 1)
-                        Divider(
-                          height: 1,
-                          color: Colors.grey.shade200,
-                        ),
-                    ],
-                  );
-                }),
-              ],
+            subtitle: Text(
+              '${information.length} thông tin',
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey.shade600,
+              ),
             ),
+            children: [
+              ...information.asMap().entries.map((entry) {
+                final index = entry.key;
+                final item = entry.value;
+
+                final label = item['label']?.toString() ?? '';
+                final value = item['value']?.toString() ?? '';
+
+                return Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 10,
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          SizedBox(
+                            width: 100,
+                            child: Text(
+                              label,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              value,
+                              style: TextStyle(
+                                color: Colors.grey.shade700,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (index != information.length - 1)
+                      Divider(
+                        height: 1,
+                        color: Colors.grey.shade200,
+                      ),
+                  ],
+                );
+              }),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -609,7 +623,7 @@ class _StoryDetailScreenState extends State<StoryDetailScreen> {
                           overflow: TextOverflow.ellipsis,
                         ),
                         subtitle: Text(
-                          'Người đăng: ${c['createdByName'] ?? 'Không rõ'}',
+                          'Source: ${c['createdBy'] ?? 'Không rõ'}',
                           style: TextStyle(
                             fontSize: 13,
                             color: Colors.grey.shade600,
@@ -626,7 +640,7 @@ class _StoryDetailScreenState extends State<StoryDetailScreen> {
                               builder: (_) => ChapterReaderScreen(
                                 chapterId: c['id'],
                                 storyId: widget.storyId,
-                                createdById: c['createdById'],
+                                source: c['createdBy'],
                               ),
                             ),
                           );
